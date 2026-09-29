@@ -35,4 +35,9 @@
 - Passwords require at least 8 characters and each of uppercase, lowercase, digit, and special character. Safe errors include distinct not-found, conflict, and database-failure classes; unexpected SQLAlchemy failures return a non-leaking `DATABASE_ERROR` 500.
 - Remediation in progress: membership/attendance schema/routes/migration and core/auth/error/OpenAPI/production-entrypoint are independent implementation groups; expanded tests and evidence run after both groups complete.
 - [x] Verifier remediation implementation — canonical membership/attendance contract and follow-on migration added; password security, safe database exception mapping, explicit OpenAPI, and Gunicorn-only application entrypoint completed.
-- [ ] Expanded verification, readable evidence, reports and final boot check
+- [x] Expanded verification, readable evidence, reports and final boot check — `python -m compileall -q app`, SQLite Alembic upgrade through `20250102_0002`, and `python -m pytest -q tests` all passed (7 tests). Temporary SQLite boot through `start.sh`/Gunicorn on port 8012 passed live health, OpenAPI, password, registration, login, identity, token-type rejection, and anonymous-protection probes. `tests-artifacts/test_results.json` now records 17 individually observed checks using the report contract columns; refreshed XLSX/DOCX reports are in `tests-artifacts/`. Docker daemon remained unavailable, so MySQL compose was not started.
+
+## Final remediation evidence
+- Canonical public routes are implemented, documented, tested, and OpenAPI-described: `/api/membership-plans`, `GET /api/members/{member_id}/memberships`, and JSON-body `POST /api/attendance/check-out`.
+- Follow-on migration `20250102_0002` reconciles plan/membership/attendance persistence fields from initial schema and passed SQLite upgrade verification.
+- Production entrypoint no longer invokes Bottle development `run()`; Gunicorn is required by the executable/start-script contract.

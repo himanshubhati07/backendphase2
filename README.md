@@ -63,7 +63,7 @@ docker compose down -v
 
 ## Migrations
 
-Alembic owns schema changes. The initial revision creates all domain tables, constraints, indexes, and foreign keys in dependency-safe order.
+Alembic owns schema changes. The initial revision creates all domain tables, constraints, indexes, and foreign keys in dependency-safe order. The follow-on `20250102_0002_membership_attendance_contract` revision upgrades existing installations to the current membership-plan, membership, and attendance contract; `alembic upgrade head` applies both revisions.
 
 ```sh
 # Apply all migrations
@@ -83,7 +83,7 @@ Do not call `Base.metadata.create_all()` in production and do not modify an appl
 
 ## Authentication and security
 
-- Passwords are bcrypt hashes; plaintext passwords are not stored.
+- Passwords are bcrypt hashes; plaintext passwords are not stored. Registration passwords must be at least 8 characters and include an uppercase letter, lowercase letter, digit, and special character.
 - Tokens are signed HS256 JWTs with issuer, subject, role, token type, issued-at, and expiry claims.
 - Use `Authorization: Bearer <access_token>` on protected routes. Refresh tokens are accepted only at the refresh endpoint.
 - Access lifetimes are intentionally short; protect refresh tokens like passwords and rotate `JWT_SECRET` using a coordinated deployment.
@@ -101,11 +101,21 @@ All responses use `success`, `message`, and either `data` or `error_code` fields
 | Auth | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `GET /api/auth/me` |
 | Members | `POST, GET /api/members`; `GET, PUT, DELETE /api/members/{member_id}` |
 | Trainers | `POST, GET /api/trainers`; `GET, PUT, DELETE /api/trainers/{trainer_id}`; `PUT /api/trainers/{trainer_id}/members/{member_id}` |
-| Plans | `GET, POST /api/plans`; `GET, PUT, PATCH /api/plans/{plan_id}`; `POST /api/plans/{plan_id}/deactivate` |
-| Memberships | `POST /api/members/{member_id}/memberships`; `GET /api/members/{member_id}/memberships/active`; `GET /api/members/{member_id}/memberships/history`; `POST /api/memberships/{membership_id}/renew`, `.../cancel` |
-| Attendance | `POST /api/attendance/check-in`; `POST /api/attendance/{attendance_id}/check-out`; `GET /api/attendance`, `/api/attendance/daily`, `/api/members/{member_id}/attendance` |
+| Membership plans | `GET, POST /api/membership-plans`; `GET, PUT, PATCH /api/membership-plans/{plan_id}`; `POST /api/membership-plans/{plan_id}/deactivate` |
+| Memberships | `POST, GET /api/members/{member_id}/memberships` (the `GET` is membership history); `GET /api/members/{member_id}/memberships/active`; `POST /api/memberships/{membership_id}/renew`, `.../cancel` |
+| Attendance | `POST /api/attendance/check-in`; `POST /api/attendance/check-out`; `GET /api/attendance`, `/api/attendance/daily`, `/api/members/{member_id}/attendance` |
 | Payments | `POST, GET /api/payments`; `GET /api/payments/{payment_id}`; `PATCH /api/payments/{payment_id}/status`; `GET /api/members/{member_id}/payments` |
 | Workouts | `POST /api/workout-plans`; `PUT, DELETE /api/workout-plans/{plan_id}`; `PUT /api/workout-plans/{plan_id}/members/{member_id}`; `GET /api/members/{member_id}/workout-plans` |
+
+### Membership and attendance contract
+
+- A membership plan has JSON `features` (normally an array of feature strings) and `status` of `active` or `inactive`.
+- A membership records its decimal `amount`, `payment_status` (`pending`, `paid`, `failed`, or `refunded`), and lifecycle `status` (`pending`, `active`, `expired`, or `cancelled`). `amount` defaults to the selected plan price and `payment_status` defaults to `pending` when omitted.
+- Attendance records always include required `check_in_at`; `checked_out_at` is null until checkout. Check in with a JSON `member_id` (and optional ISO date `attended_on`). Check out with `POST /api/attendance/check-out` and JSON `{"attendance_id": 123}`. Do not use path-based checkout URLs.
+
+### Error responses
+
+Errors use the same envelope with `success: false`, a safe `message`, and `error_code`. Clients can handle `BAD_REQUEST`, `VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `METHOD_NOT_ALLOWED`, `DATABASE_ERROR`, and `INTERNAL_ERROR`. `DATABASE_ERROR` is a non-leaking 500 response for unexpected SQLAlchemy/database failures; do not depend on internal database details being returned.
 
 ## Testing
 
