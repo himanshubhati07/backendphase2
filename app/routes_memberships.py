@@ -134,17 +134,21 @@ def register_membership_routes(app: Bottle) -> None:
         end = _date(body.get("end_date"), "end_date", default=start + timedelta(days=plan.duration_days - 1))
         if end < start:
             raise ValidationError("end_date must not be before start_date")
+        # Validate request fields before reporting a state conflict so malformed
+        # monetary input is consistently rejected as validation data.
+        amount = _amount(body.get("amount"), default=plan.price)
+        payment_status = _enum(body.get("payment_status"), PaymentStatus, "payment_status", PaymentStatus.PENDING)
+        status = _enum(body.get("status"), MembershipStatus, "status", MembershipStatus.ACTIVE)
         _expire_elapsed(session, member)
         if _overlaps(session, member.id, start, end):
             raise AppError("Membership dates overlap an active membership", "CONFLICT", 409)
         membership = Membership(
             member_id=member.id, plan_id=plan.id, start_date=start, end_date=end,
-            amount=_amount(body.get("amount"), default=plan.price),
-            payment_status=_enum(body.get("payment_status"), PaymentStatus, "payment_status", PaymentStatus.PENDING),
-            status=_enum(body.get("status"), MembershipStatus, "status", MembershipStatus.ACTIVE),
+            amount=amount, payment_status=payment_status, status=status,
         )
         session.add(membership)
-        # The member-level status is the authorization-facing lifecycle summary.
+        # Make the new lifecycle row visible before deriving the member summary.
+        session.flush()
         _sync_member_membership_status(session, member)
         session.commit()
         session.refresh(membership, attribute_names=["plan"])
@@ -196,6 +200,7 @@ def register_membership_routes(app: Bottle) -> None:
                              amount=item.plan.price, payment_status=PaymentStatus.PENDING,
                              status=MembershipStatus.ACTIVE)
         session.add(renewal)
+        session.flush()
         _sync_member_membership_status(session, member)
         session.commit()
         session.refresh(renewal, attribute_names=["plan"])

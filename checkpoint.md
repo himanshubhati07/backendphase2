@@ -43,10 +43,10 @@
 - Production entrypoint no longer invokes Bottle development `run()`; Gunicorn is required by the executable/start-script contract.
 
 ## Verifier gap-fix plan
-- [ ] STEP gap-fix design/scaffold: canonical deactivation is `DELETE /api/membership-plans/{plan_id}`; the legacy POST action is removed. Production configuration requires `DATABASE_URL`; `HOST` and `PORT` are environment-backed and documented. Monetary amounts are decimal non-negative (`>= 0`).
-- [ ] Core contract group: environment config, redacted structured database logging, and OpenAPI corrections. OpenAPI contracts: registration phone lives exclusively in `profile.phone`; plan `features` accepts object or array JSON; Error responses include `METHOD_NOT_ALLOWED`/405.
-- [ ] Membership/attendance migration group: membership status deployment contract includes `pending`, plan DELETE deactivation, and attendance requires both an active subscription and member `membership_status == active`.
-- [ ] Verification group: expand API/migration security coverage for workouts, payments, zero amounts, CORS/security headers, redaction, and schema upgrade/downgrade; regenerate observed reports after runtime verification.
+- [x] STEP gap-fix design/scaffold: canonical deactivation is `DELETE /api/membership-plans/{plan_id}`; the legacy POST action is removed. Production configuration requires `DATABASE_URL`; `HOST` and `PORT` are environment-backed and documented. Monetary amounts are decimal non-negative (`>= 0`).
+- [x] Core contract group: environment config, redacted structured database logging, and OpenAPI corrections. OpenAPI contracts: registration phone lives exclusively in `profile.phone`; plan `features` accepts object or array JSON; Error responses include `METHOD_NOT_ALLOWED`/405.
+- [x] Membership/attendance migration group: membership status deployment contract includes `pending`, plan DELETE deactivation, and attendance requires both an active subscription and member `membership_status == active`.
+- [x] Verification group: expanded API/migration security coverage for workouts, payments, zero amounts, CORS/security headers, redaction, and schema upgrade/downgrade; reports regenerated from observed verification.
 
 ## Gap-fix decisions
 - Migration revision will follow `20250102_0002`, remain SQLite/MySQL compatible, and represent membership-status compatibility without relying on database-native enum alteration (the deployed contract is enforced by the application enum/check-compatible column values and migration schema test).
@@ -64,10 +64,12 @@
 - [x] Plan prices and membership amounts now permit zero and reject negative/non-finite/out-of-range values.
 - [x] Added `20250103_0003`, a SQLite/MySQL-compatible membership-status migration that adds the persisted `PENDING` status check; downgrade maps pending rows to cancelled before restoring the preceding three-state contract.
 - [x] Membership assignment/renewal, expiry processing, and cancellation synchronize `Member.membership_status`; attendance check-in requires both that member state and a currently active membership record.
-- [ ] Local command execution is not exposed to this implementation agent, so compile/Alembic commands could not be invoked here; changes were source-reviewed for the existing Bottle/SQLAlchemy/Alembic conventions.
+- [x] Parent verification subsequently compiled the application and exercised upgrade/downgrade/re-upgrade through this revision on SQLite.
 
 ## Expanded automated coverage (test unit)
 - [x] Updated legacy membership-plan deactivation assertions to canonical `DELETE /api/membership-plans/{plan_id}` and its OpenAPI contract.
 - [x] Added isolated API/config/security/workout coverage for zero and negative amounts, member pending attendance denial, card-field rejection, response/log redaction, CORS/security headers, HOST/PORT configuration, OpenAPI 405/nested-phone/oneOf details, and trainer/admin workout lifecycle/RBAC scenarios.
 - [x] Added an Alembic SQLite revision test that upgrades `20250103_0003`, persists schema-valid `PENDING`, then downgrades and verifies conversion to `CANCELLED`.
-- [ ] Command execution was not exposed through this agent's filesystem tool interface; required `python -m compileall -q app` and `python -m pytest -q tests` remain for the execution-capable verifier.
+- [x] Final verification completed: `python -m compileall -q app` and `python -m pytest -q -vv tests` passed with 15 tests; SQLite Alembic upgraded `20250101_0001 -> 20250103_0003`, downgraded to `20250102_0002`, then re-upgraded successfully.
+- [x] Final Gunicorn boot verification succeeded using `start.sh` with explicit test environment on port 8012. The report generator made live `GET /api/health` and `GET /api/openapi.json` requests (both 200) and verified the DELETE plan contract; it then regenerated `tests-artifacts/api_test_report.xlsx`, `project_report.docx`, and accumulated `test_results.json` (25 observed rows).
+- Docker daemon was unavailable (`python:3.13-slim` pull could not connect), so compose/MySQL was not run; portable SQLite migration and application verification succeeded.

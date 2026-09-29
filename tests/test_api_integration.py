@@ -152,7 +152,7 @@ def test_membership_plan_canonical_features_status_and_lifecycle(api):
     assert renewed["payment_status"] == "pending" and renewed["amount"] == "49.99"
     assert body(api.post(f"/api/memberships/{membership['id']}/cancel", headers=auth(admin)))["status"] == "cancelled"
     assert body(api.delete(f"/api/membership-plans/{plan['id']}", headers=auth(admin)))["status"] == "inactive"
-    api.post(f"/api/membership-plans/{plan['id']}/deactivate", headers=auth(admin), status=404)
+    api.post(f"/api/membership-plans/{plan['id']}/deactivate", headers=auth(admin), status=405)
 
 
 def test_attendance_checkout_reports_and_inactive_rejection(api):
