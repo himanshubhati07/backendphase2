@@ -28,3 +28,11 @@
 - [ ] Install, migration, lint, tests, boot verification and reports
 - [x] Delivery infrastructure — Alembic initial schema migration, container/runtime files, environment template, dependency pins, and operational README added.
 - [x] API integration test unit — isolated SQLite/WebTest pytest coverage for auth, membership/attendance, payments, workouts, RBAC, validation, and safe DB-conflict responses
+
+## Verifier remediation contract
+- Membership plans are canonically `/api/membership-plans`; membership history is `GET /api/members/{member_id}/memberships`; attendance checkout is `POST /api/attendance/check-out` with `attendance_id` in JSON. Legacy incorrect paths are removed rather than documented.
+- `MembershipPlan.features` is JSON and plan status is the `active`/`inactive` enum. `Membership` carries decimal `amount`, `payment_status`, and supports `pending`. `Attendance.check_in_at` is required; incompatible nullable `checked_in_at`, `status`, and notes fields are removed. A follow-on Alembic revision upgrades the original schema.
+- Passwords require at least 8 characters and each of uppercase, lowercase, digit, and special character. Safe errors include distinct not-found, conflict, and database-failure classes; unexpected SQLAlchemy failures return a non-leaking `DATABASE_ERROR` 500.
+- Remediation in progress: membership/attendance schema/routes/migration and core/auth/error/OpenAPI/production-entrypoint are independent implementation groups; expanded tests and evidence run after both groups complete.
+- [ ] Verifier remediation implementation
+- [ ] Expanded verification, readable evidence, reports and final boot check
