@@ -9,9 +9,12 @@
 
 ## Status
 - [x] STEP 1 design/scaffold decisions
-- [ ] Core/Auth foundation
-- [ ] Members/Trainers feature group
-- [ ] Memberships/Attendance feature group
-- [ ] Payments/Workouts feature group
+- [x] Core/Auth foundation — Bottle factory, immutable settings, sync SQLAlchemy schema/models, response/error/validation utilities, JWT/bcrypt RBAC, auth/health/OpenAPI routes
+- [x] Members/Trainers feature group — normalized contact/profile schema, registration compatibility, protected member/trainer CRUD, deactivation, search, and active trainer assignment implemented
+- [x] Memberships/Attendance feature group — protected plan/membership lifecycle and attendance check-in/out/history/report routes implemented
+- [x] Payments/Workouts feature group — payment and workout routes wired; secure payment schema/validation, RBAC-scoped queries, atomic exercise replacement, and cascading exercises implemented.
+- [ ] Contract reconciliation and OpenAPI expansion
+- [ ] Migration, documentation, container deliverables
+- [ ] Test suite and runtime verification
 - [ ] Migration, documentation, container deliverables
 - [ ] Install, migration, lint, tests, boot verification and reports
