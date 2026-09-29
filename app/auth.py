@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, ParamSpec, TypeVar
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -33,9 +34,9 @@ def verify_password(password: str, password_hash: str) -> bool:
 def issue_token(user: User, token_type: str, settings: Settings) -> str:
     if token_type not in {"access", "refresh"}:
         raise ValueError("unsupported token type")
-    lifetime = timedelta(minutes=settings.access_token_minutes) if token_type == "access" else timedelta(days=settings.refresh_token_days)
+    lifetime = timedelta(seconds=settings.access_token_ttl_seconds if token_type == "access" else settings.refresh_token_ttl_seconds)
     now = datetime.now(timezone.utc)
-    payload = {"sub": str(user.id), "role": user.role.value, "type": token_type, "iat": now, "exp": now + lifetime, "iss": settings.jwt_issuer}
+    payload = {"sub": str(user.id), "role": user.role.value, "type": token_type, "jti": uuid4().hex, "iat": now, "exp": now + lifetime, "iss": settings.jwt_issuer}
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
 
 

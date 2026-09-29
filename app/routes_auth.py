@@ -38,7 +38,7 @@ def _tokens(user: User, settings: Settings) -> dict[str, Any]:
         "access_token": issue_token(user, "access", settings),
         "refresh_token": issue_token(user, "refresh", settings),
         "token_type": "Bearer",
-        "expires_in": settings.access_token_minutes * 60,
+        "expires_in": settings.access_token_ttl_seconds,
         "user": _user_data(user),
     }
 

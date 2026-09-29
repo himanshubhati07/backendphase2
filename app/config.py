@@ -28,14 +28,21 @@ def _positive_int(name: str, default: int) -> int:
     return parsed
 
 
+def _ttl_seconds(seconds_name: str, legacy_name: str, legacy_default: int, multiplier: int) -> int:
+    """Read the seconds contract, falling back to the legacy unit-based setting."""
+    if seconds_name in os.environ:
+        return _positive_int(seconds_name, legacy_default * multiplier)
+    return _positive_int(legacy_name, legacy_default) * multiplier
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     environment: str
     database_url: str
     jwt_secret: str
     jwt_issuer: str
-    access_token_minutes: int
-    refresh_token_days: int
+    access_token_ttl_seconds: int
+    refresh_token_ttl_seconds: int
     cors_origins: tuple[str, ...]
     log_level: str
 
@@ -44,16 +51,30 @@ class Settings:
         origins = tuple(
             origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()
         )
+        # The *_TTL_SECONDS names are the deployment contract. The older names
+        # remain accepted so existing installations can upgrade without a flag day.
+        access_ttl = _ttl_seconds("JWT_ACCESS_TTL_SECONDS", "JWT_ACCESS_TOKEN_MINUTES", 15, 60)
+        refresh_ttl = _ttl_seconds("JWT_REFRESH_TTL_SECONDS", "JWT_REFRESH_TOKEN_DAYS", 7, 86400)
         return cls(
             environment=os.getenv("APP_ENV", "production"),
             database_url=os.getenv("DATABASE_URL", "sqlite:///gym.db"),
             jwt_secret=_required("JWT_SECRET"),
             jwt_issuer=os.getenv("JWT_ISSUER", "gym-api"),
-            access_token_minutes=_positive_int("JWT_ACCESS_TOKEN_MINUTES", 15),
-            refresh_token_days=_positive_int("JWT_REFRESH_TOKEN_DAYS", 7),
+            access_token_ttl_seconds=access_ttl,
+            refresh_token_ttl_seconds=refresh_ttl,
             cors_origins=origins,
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         )
+
+    @property
+    def access_token_minutes(self) -> float:
+        """Compatibility view for callers that previously used whole minutes."""
+        return self.access_token_ttl_seconds / 60
+
+    @property
+    def refresh_token_days(self) -> float:
+        """Compatibility view for callers that previously used whole days."""
+        return self.refresh_token_ttl_seconds / 86400
 
 
 @lru_cache(maxsize=1)

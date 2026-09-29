@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.git
+.codegraph
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.db
+logs/
