@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from .auth import can_manage_member, current_user, enforce, require_auth
 from .errors import AppError, ValidationError
-from .models import Attendance, AttendanceStatus, Member, Membership, MembershipStatus, UserRole
+from .models import Attendance, Member, Membership, MembershipStatus, ProfileStatus, UserRole
 from .responses import success
-from .validation import json_body, optional_string
+from .validation import json_body
 
 
 def _date(value: str | None, field: str, *, default: date | None = None) -> date:
@@ -35,9 +35,9 @@ def _member(session: Session, member_id: int) -> Member:
 
 def _attendance_data(item: Attendance) -> dict[str, Any]:
     return {"id": item.id, "member_id": item.member_id, "trainer_id": item.trainer_id,
-            "attended_on": item.attended_on, "checked_in_at": item.checked_in_at,
-            "checked_out_at": item.checked_out_at, "status": item.status, "notes": item.notes,
-            "created_at": item.created_at, "updated_at": item.updated_at}
+            "attended_on": item.attended_on, "check_in_at": item.check_in_at,
+            "checked_out_at": item.checked_out_at, "created_at": item.created_at,
+            "updated_at": item.updated_at}
 
 
 def _active_membership(session: Session, member_id: int, on_date: date) -> bool:
@@ -66,11 +66,8 @@ def register_attendance_routes(app: Bottle) -> None:
         member = _member(session, member_id)
         enforce(can_manage_member(member))
         attended_on = _date(body.get("attended_on"), "attended_on", default=date.today())
-        status = body.get("status", AttendanceStatus.PRESENT.value)
-        if status not in {state.value for state in AttendanceStatus}:
-            raise ValidationError("status must be present or absent")
-        if status != AttendanceStatus.PRESENT.value:
-            raise ValidationError("check-in status must be present")
+        if member.profile_status is ProfileStatus.INACTIVE:
+            raise ValidationError("Inactive member profiles cannot check in")
         if not _active_membership(session, member.id, attended_on):
             raise ValidationError("Member does not have an active membership for this date")
         open_record = session.scalar(select(Attendance.id).where(Attendance.member_id == member.id,
@@ -83,22 +80,24 @@ def register_attendance_routes(app: Bottle) -> None:
         user = current_user()
         trainer_id = user.trainer.id if user.role is UserRole.TRAINER and user.trainer else None
         item = Attendance(member_id=member.id, trainer_id=trainer_id, attended_on=attended_on,
-                          checked_in_at=datetime.now(timezone.utc), status=AttendanceStatus.PRESENT,
-                          notes=optional_string(body, "notes", max_length=5000))
+                          check_in_at=datetime.now(timezone.utc))
         session.add(item)
         session.commit()
         return success(_attendance_data(item), "Member checked in", 201)
 
-    @app.post("/api/attendance/<attendance_id:int>/check-out")
+    @app.post("/api/attendance/check-out")
     @require_auth()
-    def check_out(attendance_id: int) -> Any:
+    def check_out() -> Any:
         session: Session = request.environ["gym.db"]
+        attendance_id = json_body().get("attendance_id")
+        if isinstance(attendance_id, bool) or not isinstance(attendance_id, int) or attendance_id <= 0:
+            raise ValidationError("attendance_id must be a positive integer")
         item = session.get(Attendance, attendance_id)
         if item is None:
             abort(404)
         member = _member(session, item.member_id)
         enforce(can_manage_member(member))
-        if item.checked_in_at is None or item.checked_out_at is not None:
+        if item.checked_out_at is not None:
             raise ValidationError("Attendance record is not open")
         item.checked_out_at = datetime.now(timezone.utc)
         session.commit()

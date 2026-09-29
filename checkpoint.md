@@ -34,5 +34,5 @@
 - `MembershipPlan.features` is JSON and plan status is the `active`/`inactive` enum. `Membership` carries decimal `amount`, `payment_status`, and supports `pending`. `Attendance.check_in_at` is required; incompatible nullable `checked_in_at`, `status`, and notes fields are removed. A follow-on Alembic revision upgrades the original schema.
 - Passwords require at least 8 characters and each of uppercase, lowercase, digit, and special character. Safe errors include distinct not-found, conflict, and database-failure classes; unexpected SQLAlchemy failures return a non-leaking `DATABASE_ERROR` 500.
 - Remediation in progress: membership/attendance schema/routes/migration and core/auth/error/OpenAPI/production-entrypoint are independent implementation groups; expanded tests and evidence run after both groups complete.
-- [ ] Verifier remediation implementation
+- [x] Verifier remediation implementation — canonical membership/attendance contract and follow-on migration added; password security, safe database exception mapping, explicit OpenAPI, and Gunicorn-only application entrypoint completed.
 - [ ] Expanded verification, readable evidence, reports and final boot check

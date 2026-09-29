@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from bottle import Bottle, HTTPError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .responses import error
 
@@ -17,6 +18,24 @@ class AppError(Exception):
         self.message = message
         self.error_code = error_code
         self.status = status
+
+
+class NotFoundError(AppError):
+    """A requested resource does not exist (or is deliberately undisclosed)."""
+    def __init__(self, message: str = "Resource not found") -> None:
+        super().__init__(message, "NOT_FOUND", 404)
+
+
+class ConflictError(AppError):
+    """The requested change conflicts with existing state."""
+    def __init__(self, message: str = "Request conflicts with existing data") -> None:
+        super().__init__(message, "CONFLICT", 409)
+
+
+class DatabaseError(AppError):
+    """A deliberately non-leaking response for unexpected database failures."""
+    def __init__(self) -> None:
+        super().__init__("A database error occurred", "DATABASE_ERROR", 500)
 
 
 class ValidationError(AppError):
@@ -50,7 +69,15 @@ def register_error_handlers(app: Bottle) -> None:
     @app.error(500)
     def internal_error(err: HTTPError) -> Any:
         original = err.exception
+        # Normally AppError is converted by SafeErrorPlugin. Keep this fallback for
+        # exceptions raised before/without the plugin (for example a Bottle hook).
         if isinstance(original, AppError):
             return error(original.message, original.error_code, original.status)
-        logger.exception("unhandled_request_error", exc_info=original)
+        if isinstance(original, IntegrityError):
+            safe_error = ConflictError()
+            return error(safe_error.message, safe_error.error_code, safe_error.status)
+        if isinstance(original, SQLAlchemyError):
+            safe_error = DatabaseError()
+            return error(safe_error.message, safe_error.error_code, safe_error.status)
+        logger.exception("unhandled_request_error", exc_info=(type(original), original, original.__traceback__) if original else None)
         return error("An unexpected error occurred", "INTERNAL_ERROR", 500)

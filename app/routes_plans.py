@@ -1,16 +1,17 @@
 """Membership plan administration routes."""
 from __future__ import annotations
 
+import json
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from bottle import Bottle, request
+from bottle import Bottle, abort, request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import require_auth
 from .errors import ValidationError
-from .models import MembershipPlan, UserRole
+from .models import MembershipPlan, PlanStatus, UserRole
 from .responses import success
 from .validation import json_body, optional_string, required_string
 
@@ -33,11 +34,30 @@ def _price(value: Any) -> Decimal:
     return amount.quantize(Decimal("0.01"))
 
 
+def _features(value: Any) -> list | dict:
+    # Plans expose structured JSON features, rather than a lossy text field.
+    if not isinstance(value, (list, dict)):
+        raise ValidationError("features must be a JSON array or object")
+    try:
+        json.dumps(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("features must be JSON serializable") from exc
+    return value
+
+
+def _status(value: Any) -> PlanStatus:
+    if not isinstance(value, str):
+        raise ValidationError("status must be active or inactive")
+    try:
+        return PlanStatus(value)
+    except ValueError as exc:
+        raise ValidationError("status must be active or inactive") from exc
+
+
 def _plan_data(plan: MembershipPlan) -> dict[str, Any]:
     return {"id": plan.id, "name": plan.name, "description": plan.description,
-            "duration_days": plan.duration_days, "price": plan.price,
-            "is_active": plan.is_active, "created_at": plan.created_at,
-            "updated_at": plan.updated_at}
+            "duration_days": plan.duration_days, "price": plan.price, "features": plan.features,
+            "status": plan.status, "created_at": plan.created_at, "updated_at": plan.updated_at}
 
 
 def _plan_input(body: dict[str, Any], *, partial: bool = False) -> dict[str, Any]:
@@ -50,15 +70,18 @@ def _plan_input(body: dict[str, Any], *, partial: bool = False) -> dict[str, Any
         values["duration_days"] = _positive_int(body.get("duration_days"), "duration_days")
     if not partial or "price" in body:
         values["price"] = _price(body.get("price"))
-    if "is_active" in body:
-        if not isinstance(body["is_active"], bool):
-            raise ValidationError("is_active must be a boolean")
-        values["is_active"] = body["is_active"]
+    # Existing callers can omit features; every persisted plan still has JSON features.
+    if "features" in body:
+        values["features"] = _features(body["features"])
+    elif not partial:
+        values["features"] = []
+    if "status" in body:
+        values["status"] = _status(body["status"])
     return values
 
 
 def register_plan_routes(app: Bottle) -> None:
-    @app.get("/api/plans")
+    @app.get("/api/membership-plans")
     @require_auth()
     def list_plans() -> Any:
         session: Session = request.environ["gym.db"]
@@ -67,20 +90,19 @@ def register_plan_routes(app: Bottle) -> None:
             raise ValidationError("include_inactive must be true or false")
         query = select(MembershipPlan).order_by(MembershipPlan.id)
         if include_inactive == "false":
-            query = query.where(MembershipPlan.is_active.is_(True))
+            query = query.where(MembershipPlan.status == PlanStatus.ACTIVE)
         return success([_plan_data(item) for item in session.scalars(query)], "Membership plans")
 
-    @app.get("/api/plans/<plan_id:int>")
+    @app.get("/api/membership-plans/<plan_id:int>")
     @require_auth()
     def get_plan(plan_id: int) -> Any:
         session: Session = request.environ["gym.db"]
         plan = session.get(MembershipPlan, plan_id)
         if plan is None:
-            from bottle import abort
             abort(404)
         return success(_plan_data(plan), "Membership plan")
 
-    @app.post("/api/plans")
+    @app.post("/api/membership-plans")
     @require_auth(UserRole.ADMIN)
     def create_plan() -> Any:
         session: Session = request.environ["gym.db"]
@@ -89,28 +111,26 @@ def register_plan_routes(app: Bottle) -> None:
         session.commit()
         return success(_plan_data(plan), "Membership plan created", 201)
 
-    @app.put("/api/plans/<plan_id:int>")
-    @app.patch("/api/plans/<plan_id:int>")
+    @app.put("/api/membership-plans/<plan_id:int>")
+    @app.patch("/api/membership-plans/<plan_id:int>")
     @require_auth(UserRole.ADMIN)
     def update_plan(plan_id: int) -> Any:
         session: Session = request.environ["gym.db"]
         plan = session.get(MembershipPlan, plan_id)
         if plan is None:
-            from bottle import abort
             abort(404)
         for field, value in _plan_input(json_body(), partial=request.method == "PATCH").items():
             setattr(plan, field, value)
         session.commit()
         return success(_plan_data(plan), "Membership plan updated")
 
-    @app.post("/api/plans/<plan_id:int>/deactivate")
+    @app.post("/api/membership-plans/<plan_id:int>/deactivate")
     @require_auth(UserRole.ADMIN)
     def deactivate_plan(plan_id: int) -> Any:
         session: Session = request.environ["gym.db"]
         plan = session.get(MembershipPlan, plan_id)
         if plan is None:
-            from bottle import abort
             abort(404)
-        plan.is_active = False
+        plan.status = PlanStatus.INACTIVE
         session.commit()
         return success(_plan_data(plan), "Membership plan deactivated")

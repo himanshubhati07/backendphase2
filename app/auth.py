@@ -13,11 +13,22 @@ from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .errors import AuthenticationError, AuthorizationError
+from .errors import AuthenticationError, AuthorizationError, ValidationError
 from .models import Member, Trainer, User, UserRole
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+def validate_password_strength(password: str) -> None:
+    """Enforce the public registration password policy before hashing."""
+    if (len(password) < 8 or not any(char.isupper() for char in password)
+            or not any(char.islower() for char in password)
+            or not any(char.isdigit() for char in password)
+            or not any(not char.isalnum() for char in password)):
+        raise ValidationError(
+            "password must be at least 8 characters and include uppercase, lowercase, digit, and special character"
+        )
 
 
 def hash_password(password: str) -> str:

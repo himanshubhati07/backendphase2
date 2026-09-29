@@ -7,9 +7,11 @@ from typing import Any
 from bottle import Bottle, request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .auth import current_user, decode_token, hash_password, issue_token, require_auth, verify_password
+from .auth import current_user, decode_token, hash_password, issue_token, require_auth, validate_password_strength, verify_password
+from .errors import ConflictError
 from .config import Settings
 from .errors import AuthenticationError, ValidationError
 from .models import Member, Trainer, User, UserRole
@@ -58,6 +60,7 @@ def register_auth_routes(app: Bottle) -> None:
         if "@" not in email or email.startswith("@") or email.endswith("@"):
             raise ValidationError("email must be a valid email address")
         password = required_string(body, "password", min_length=8, max_length=128)
+        validate_password_strength(password)
         role_name = body.get("role", UserRole.MEMBER.value)
         if role_name not in (UserRole.MEMBER.value, UserRole.TRAINER.value):
             raise ValidationError("role must be member or trainer")
@@ -91,7 +94,12 @@ def register_auth_routes(app: Bottle) -> None:
             session.commit()
         except IntegrityError as exc:
             session.rollback()
-            raise ValidationError("An account with this email already exists") from exc
+            raise ConflictError("An account with this email already exists") from exc
+        except SQLAlchemyError:
+            # The request plugin also protects every route, but rolling back here
+            # keeps this session usable if registration logic is reused.
+            session.rollback()
+            raise
         return success(_tokens(user, settings), "Registration successful", 201)
 
     @app.post("/api/auth/login")

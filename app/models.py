@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, ForeignKey, Index, JSON, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -19,9 +19,15 @@ class UserRole(str, Enum):
 
 
 class MembershipStatus(str, Enum):
+    PENDING = "pending"
     ACTIVE = "active"
     EXPIRED = "expired"
     CANCELLED = "cancelled"
+
+
+class PlanStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
 
 
 class MemberMembershipStatus(str, Enum):
@@ -59,11 +65,6 @@ class PaymentMethod(str, Enum):
 class WorkoutStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
-
-
-class AttendanceStatus(str, Enum):
-    PRESENT = "present"
-    ABSENT = "absent"
 
 
 class Timestamped:
@@ -129,7 +130,9 @@ class MembershipPlan(Timestamped, Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     duration_days: Mapped[int] = mapped_column(nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    features: Mapped[list | dict] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[PlanStatus] = mapped_column(SqlEnum(PlanStatus, native_enum=False, length=16), nullable=False,
+                                                 default=PlanStatus.ACTIVE, server_default="ACTIVE")
     memberships: Mapped[list["Membership"]] = relationship(back_populates="plan")
 
 
@@ -141,6 +144,9 @@ class Membership(Timestamped, Base):
     plan_id: Mapped[int] = mapped_column(ForeignKey("membership_plans.id", ondelete="RESTRICT"), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    payment_status: Mapped[PaymentStatus] = mapped_column(SqlEnum(PaymentStatus, native_enum=False, length=16), nullable=False,
+                                                           default=PaymentStatus.PENDING, server_default="PENDING")
     status: Mapped[MembershipStatus] = mapped_column(SqlEnum(MembershipStatus, native_enum=False, length=16), nullable=False, index=True)
     member: Mapped[Member] = relationship(back_populates="memberships")
     plan: Mapped[MembershipPlan] = relationship(back_populates="memberships")
@@ -154,10 +160,8 @@ class Attendance(Timestamped, Base):
     member_id: Mapped[int] = mapped_column(ForeignKey("members.id", ondelete="CASCADE"), nullable=False)
     trainer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("trainers.id", ondelete="SET NULL"), index=True)
     attended_on: Mapped[date] = mapped_column(Date, nullable=False)
-    checked_in_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    check_in_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     checked_out_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    status: Mapped[AttendanceStatus] = mapped_column(SqlEnum(AttendanceStatus, native_enum=False, length=16), nullable=False, default=AttendanceStatus.PRESENT)
-    notes: Mapped[Optional[str]] = mapped_column(Text)
     member: Mapped[Member] = relationship(back_populates="attendance_records")
     trainer: Mapped[Optional[Trainer]] = relationship(back_populates="attendance_records")
 
