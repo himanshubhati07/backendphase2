@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bottle import Bottle, HTTPError
+from bottle import Bottle, HTTPError, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .responses import error
@@ -74,10 +74,14 @@ def register_error_handlers(app: Bottle) -> None:
         if isinstance(original, AppError):
             return error(original.message, original.error_code, original.status)
         if isinstance(original, IntegrityError):
+            logger.warning("database_error_redacted request_id=%s", request.environ.get("gym.request_id", "unknown"))
             safe_error = ConflictError()
             return error(safe_error.message, safe_error.error_code, safe_error.status)
         if isinstance(original, SQLAlchemyError):
+            logger.warning("database_error_redacted request_id=%s", request.environ.get("gym.request_id", "unknown"))
             safe_error = DatabaseError()
             return error(safe_error.message, safe_error.error_code, safe_error.status)
-        logger.exception("unhandled_request_error", exc_info=(type(original), original, original.__traceback__) if original else None)
+        # Do not attach exception objects/traces: locals in an unexpected failure
+        # can contain request credentials, SQL values, or payment data.
+        logger.error("unhandled_request_error_redacted request_id=%s", request.environ.get("gym.request_id", "unknown"))
         return error("An unexpected error occurred", "INTERNAL_ERROR", 500)

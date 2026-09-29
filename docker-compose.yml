@@ -25,6 +25,8 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: ${APP_ENV:-production}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8000}
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-gym-api}
@@ -35,7 +37,7 @@ services:
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
       GUNICORN_THREADS: ${GUNICORN_THREADS:-4}
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
 
 volumes:
   mysql_data:

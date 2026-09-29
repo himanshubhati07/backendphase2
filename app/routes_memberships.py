@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from .auth import can_manage_member, current_user, enforce, require_auth
 from .errors import AppError, ValidationError
-from .models import Member, Membership, MembershipPlan, MembershipStatus, PaymentStatus, PlanStatus, UserRole
+from .models import (Member, MemberMembershipStatus, Membership, MembershipPlan,
+                     MembershipStatus, PaymentStatus, PlanStatus, UserRole)
 from .responses import success
 from .validation import json_body
 
@@ -31,13 +32,13 @@ def _amount(value: Any, *, default: Decimal) -> Decimal:
     if value is None:
         return default
     if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
-        raise ValidationError("amount must be a positive amount")
+        raise ValidationError("amount must be a non-negative amount")
     try:
         amount = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise ValidationError("amount must be a positive amount") from exc
-    if not amount.is_finite() or amount <= 0 or amount.as_tuple().exponent < -2 or amount > Decimal("99999999.99"):
-        raise ValidationError("amount must be a positive amount with at most two decimal places")
+        raise ValidationError("amount must be a non-negative amount") from exc
+    if not amount.is_finite() or amount < 0 or amount.as_tuple().exponent < -2 or amount > Decimal("99999999.99"):
+        raise ValidationError("amount must be a non-negative amount with at most two decimal places")
     return amount.quantize(Decimal("0.01"))
 
 
@@ -80,12 +81,28 @@ def _staff_can_manage(member: Member) -> None:
     enforce(current_user().role in {UserRole.ADMIN, UserRole.TRAINER} and can_manage_member(member))
 
 
-def _expire_elapsed(session: Session, member_id: int) -> None:
+def _sync_member_membership_status(session: Session, member: Member) -> None:
+    """Reflect the member's current membership lifecycle state on their profile."""
+    statuses = list(session.scalars(select(Membership.status).where(Membership.member_id == member.id)))
+    if MembershipStatus.ACTIVE in statuses:
+        member.membership_status = MemberMembershipStatus.ACTIVE
+    elif MembershipStatus.PENDING in statuses:
+        member.membership_status = MemberMembershipStatus.PENDING
+    elif MembershipStatus.CANCELLED in statuses:
+        member.membership_status = MemberMembershipStatus.CANCELLED
+    elif MembershipStatus.EXPIRED in statuses:
+        member.membership_status = MemberMembershipStatus.EXPIRED
+    else:
+        member.membership_status = MemberMembershipStatus.PENDING
+
+
+def _expire_elapsed(session: Session, member: Member) -> None:
     today = date.today()
-    for item in session.scalars(select(Membership).where(Membership.member_id == member_id,
+    for item in session.scalars(select(Membership).where(Membership.member_id == member.id,
                                                          Membership.status == MembershipStatus.ACTIVE,
                                                          Membership.end_date < today)):
         item.status = MembershipStatus.EXPIRED
+    _sync_member_membership_status(session, member)
 
 
 def _overlaps(session: Session, member_id: int, start: date, end: date, *, ignore_id: int | None = None) -> bool:
@@ -117,7 +134,7 @@ def register_membership_routes(app: Bottle) -> None:
         end = _date(body.get("end_date"), "end_date", default=start + timedelta(days=plan.duration_days - 1))
         if end < start:
             raise ValidationError("end_date must not be before start_date")
-        _expire_elapsed(session, member.id)
+        _expire_elapsed(session, member)
         if _overlaps(session, member.id, start, end):
             raise AppError("Membership dates overlap an active membership", "CONFLICT", 409)
         membership = Membership(
@@ -127,6 +144,8 @@ def register_membership_routes(app: Bottle) -> None:
             status=_enum(body.get("status"), MembershipStatus, "status", MembershipStatus.ACTIVE),
         )
         session.add(membership)
+        # The member-level status is the authorization-facing lifecycle summary.
+        _sync_member_membership_status(session, member)
         session.commit()
         session.refresh(membership, attribute_names=["plan"])
         return success(_membership_data(membership), "Membership assigned", 201)
@@ -135,8 +154,8 @@ def register_membership_routes(app: Bottle) -> None:
     @require_auth()
     def active_membership(member_id: int) -> Any:
         session: Session = request.environ["gym.db"]
-        _managed_member(session, member_id)
-        _expire_elapsed(session, member_id)
+        member = _managed_member(session, member_id)
+        _expire_elapsed(session, member)
         session.commit()
         today = date.today()
         item = session.scalar(select(Membership).options(joinedload(Membership.plan)).where(
@@ -148,8 +167,8 @@ def register_membership_routes(app: Bottle) -> None:
     @require_auth()
     def membership_history(member_id: int) -> Any:
         session: Session = request.environ["gym.db"]
-        _managed_member(session, member_id)
-        _expire_elapsed(session, member_id)
+        member = _managed_member(session, member_id)
+        _expire_elapsed(session, member)
         session.commit()
         records = session.scalars(select(Membership).options(joinedload(Membership.plan)).where(
             Membership.member_id == member_id).order_by(Membership.start_date.desc(), Membership.id.desc()))
@@ -164,7 +183,7 @@ def register_membership_routes(app: Bottle) -> None:
             abort(404)
         member = _managed_member(session, item.member_id)
         _staff_can_manage(member)
-        _expire_elapsed(session, member.id)
+        _expire_elapsed(session, member)
         if item.status == MembershipStatus.CANCELLED:
             raise ValidationError("Cancelled memberships cannot be renewed")
         if item.plan.status is not PlanStatus.ACTIVE:
@@ -177,6 +196,7 @@ def register_membership_routes(app: Bottle) -> None:
                              amount=item.plan.price, payment_status=PaymentStatus.PENDING,
                              status=MembershipStatus.ACTIVE)
         session.add(renewal)
+        _sync_member_membership_status(session, member)
         session.commit()
         session.refresh(renewal, attribute_names=["plan"])
         return success(_membership_data(renewal), "Membership renewed", 201)
@@ -190,10 +210,11 @@ def register_membership_routes(app: Bottle) -> None:
             abort(404)
         member = _managed_member(session, item.member_id)
         _staff_can_manage(member)
-        _expire_elapsed(session, member.id)
+        _expire_elapsed(session, member)
         if item.status != MembershipStatus.ACTIVE:
             raise ValidationError("Only active memberships can be cancelled")
         item.status = MembershipStatus.CANCELLED
+        _sync_member_membership_status(session, member)
         session.commit()
         session.refresh(item, attribute_names=["plan"])
         return success(_membership_data(item), "Membership cancelled")

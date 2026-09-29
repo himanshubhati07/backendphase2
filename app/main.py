@@ -58,15 +58,20 @@ class SafeErrorPlugin:
                 session = request.environ.get("gym.db")
                 if isinstance(session, Session):
                     session.rollback()
-                logging.getLogger(__name__).warning("database_integrity_error", exc_info=exc)
+                logging.getLogger(__name__).warning(
+                    "database_error_redacted request_id=%s", request.environ.get("gym.request_id", "unknown")
+                )
                 safe_error = ConflictError()
                 return error(safe_error.message, safe_error.error_code, safe_error.status)
             except SQLAlchemyError as exc:
                 session = request.environ.get("gym.db")
                 if isinstance(session, Session):
                     session.rollback()
-                # Driver messages can include SQL, connection details, and values.
-                logging.getLogger(__name__).exception("database_request_error", exc_info=exc)
+                # Driver messages can include SQL, connection details, and values;
+                # do not attach the exception or traceback to operational logs.
+                logging.getLogger(__name__).warning(
+                    "database_error_redacted request_id=%s", request.environ.get("gym.request_id", "unknown")
+                )
                 safe_error = DatabaseError()
                 return error(safe_error.message, safe_error.error_code, safe_error.status)
         return wrapped

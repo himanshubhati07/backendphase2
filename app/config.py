@@ -45,6 +45,8 @@ class Settings:
     refresh_token_ttl_seconds: int
     cors_origins: tuple[str, ...]
     log_level: str
+    host: str
+    port: int
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -55,15 +57,26 @@ class Settings:
         # remain accepted so existing installations can upgrade without a flag day.
         access_ttl = _ttl_seconds("JWT_ACCESS_TTL_SECONDS", "JWT_ACCESS_TOKEN_MINUTES", 15, 60)
         refresh_ttl = _ttl_seconds("JWT_REFRESH_TTL_SECONDS", "JWT_REFRESH_TOKEN_DAYS", 7, 86400)
+        environment = os.getenv("APP_ENV", "production").strip().lower()
+        database_url = os.getenv("DATABASE_URL")
+        # SQLite is allowed only for deliberately selected test mode. Production
+        # and development must supply their database endpoint explicitly.
+        if not database_url:
+            if environment == "test":
+                database_url = "sqlite:///:memory:"
+            else:
+                raise ConfigurationError("DATABASE_URL must be configured outside test mode")
         return cls(
-            environment=os.getenv("APP_ENV", "production"),
-            database_url=os.getenv("DATABASE_URL", "sqlite:///gym.db"),
+            environment=environment,
+            database_url=database_url,
             jwt_secret=_required("JWT_SECRET"),
             jwt_issuer=os.getenv("JWT_ISSUER", "gym-api"),
             access_token_ttl_seconds=access_ttl,
             refresh_token_ttl_seconds=refresh_ttl,
             cors_origins=origins,
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            host=os.getenv("HOST", "0.0.0.0"),
+            port=_positive_int("PORT", 8000),
         )
 
     @property

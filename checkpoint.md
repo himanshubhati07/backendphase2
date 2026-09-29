@@ -52,3 +52,22 @@
 - Migration revision will follow `20250102_0002`, remain SQLite/MySQL compatible, and represent membership-status compatibility without relying on database-native enum alteration (the deployed contract is enforced by the application enum/check-compatible column values and migration schema test).
 - Redacted operational logs contain only a fixed event name and request ID; they never attach exceptions, SQL, values, request bodies, headers, card fields, or traceback data for database exceptions.
 - Workout scenarios are tested via existing authenticated API flows: trainer creates/replaces exercises and assigns workouts; members retrieve only assigned workouts; unrelated members are denied.
+
+## Core-contract verifier fixes
+- [x] Core configuration/logging/OpenAPI/docs: `DATABASE_URL` is mandatory outside explicit `APP_ENV=test`; test mode retains an isolated SQLite default and explicit test URLs remain supported. `HOST`/`PORT` are typed environment settings, passed through Compose/startup, and documented in `.env.example` and README.
+- [x] SQLAlchemy/IntegrityError operational events are redacted to a fixed event and request ID without exception objects, SQL, values, or traces; fallback global database/unhandled logging is likewise trace-free while keeping safe response envelopes.
+- [x] OpenAPI registration documents phone exclusively at `profile.phone`; membership plan feature inputs are object-or-array JSON; `METHOD_NOT_ALLOWED` and 405 error responses are documented for all operations.
+- Verification note: source-level compile/test execution was not available through this unit's filesystem-only tool interface; no tests were changed.
+
+## Membership/attendance verifier fixes
+- [x] Replaced the legacy plan-deactivation action with admin-only `DELETE /api/membership-plans/{plan_id}`; no legacy POST route remains.
+- [x] Plan prices and membership amounts now permit zero and reject negative/non-finite/out-of-range values.
+- [x] Added `20250103_0003`, a SQLite/MySQL-compatible membership-status migration that adds the persisted `PENDING` status check; downgrade maps pending rows to cancelled before restoring the preceding three-state contract.
+- [x] Membership assignment/renewal, expiry processing, and cancellation synchronize `Member.membership_status`; attendance check-in requires both that member state and a currently active membership record.
+- [ ] Local command execution is not exposed to this implementation agent, so compile/Alembic commands could not be invoked here; changes were source-reviewed for the existing Bottle/SQLAlchemy/Alembic conventions.
+
+## Expanded automated coverage (test unit)
+- [x] Updated legacy membership-plan deactivation assertions to canonical `DELETE /api/membership-plans/{plan_id}` and its OpenAPI contract.
+- [x] Added isolated API/config/security/workout coverage for zero and negative amounts, member pending attendance denial, card-field rejection, response/log redaction, CORS/security headers, HOST/PORT configuration, OpenAPI 405/nested-phone/oneOf details, and trainer/admin workout lifecycle/RBAC scenarios.
+- [x] Added an Alembic SQLite revision test that upgrades `20250103_0003`, persists schema-valid `PENDING`, then downgrades and verifies conversion to `CANCELLED`.
+- [ ] Command execution was not exposed through this agent's filesystem tool interface; required `python -m compileall -q app` and `python -m pytest -q tests` remain for the execution-capable verifier.

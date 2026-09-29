@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from .auth import can_manage_member, current_user, enforce, require_auth
 from .errors import AppError, ValidationError
-from .models import Attendance, Member, Membership, MembershipStatus, ProfileStatus, UserRole
+from .models import (Attendance, Member, MemberMembershipStatus, Membership,
+                     MembershipStatus, ProfileStatus, UserRole)
 from .responses import success
 from .validation import json_body
 
@@ -68,6 +69,8 @@ def register_attendance_routes(app: Bottle) -> None:
         attended_on = _date(body.get("attended_on"), "attended_on", default=date.today())
         if member.profile_status is ProfileStatus.INACTIVE:
             raise ValidationError("Inactive member profiles cannot check in")
+        if member.membership_status is not MemberMembershipStatus.ACTIVE:
+            raise ValidationError("Member does not have an active membership for this date")
         if not _active_membership(session, member.id, attended_on):
             raise ValidationError("Member does not have an active membership for this date")
         open_record = session.scalar(select(Attendance.id).where(Attendance.member_id == member.id,

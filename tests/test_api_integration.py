@@ -151,7 +151,8 @@ def test_membership_plan_canonical_features_status_and_lifecycle(api):
     renewed = body(api.post(f"/api/memberships/{membership['id']}/renew", headers=auth(admin), status=201))
     assert renewed["payment_status"] == "pending" and renewed["amount"] == "49.99"
     assert body(api.post(f"/api/memberships/{membership['id']}/cancel", headers=auth(admin)))["status"] == "cancelled"
-    assert body(api.post(f"/api/membership-plans/{plan['id']}/deactivate", headers=auth(admin)))["status"] == "inactive"
+    assert body(api.delete(f"/api/membership-plans/{plan['id']}", headers=auth(admin)))["status"] == "inactive"
+    api.post(f"/api/membership-plans/{plan['id']}/deactivate", headers=auth(admin), status=404)
 
 
 def test_attendance_checkout_reports_and_inactive_rejection(api):
@@ -202,8 +203,8 @@ def test_openapi_matches_canonical_routes_and_typed_parameters(api):
     paths = document["paths"]
     assert "/api/membership-plans" in paths
     assert "/api/plans" not in paths and "/api/attendance/{attendance_id}/check-out" not in paths
-    assert "post" in paths["/api/membership-plans/{plan_id}/deactivate"]
-    assert "delete" not in paths["/api/membership-plans/{plan_id}"]
+    assert "/api/membership-plans/{plan_id}/deactivate" not in paths
+    assert "delete" in paths["/api/membership-plans/{plan_id}"]
     attendance_parameters = paths["/api/attendance"]["get"]["parameters"]
     assert {item["name"]: item["schema"]["format"] for item in attendance_parameters} == {"start_date": "date", "end_date": "date"}
     checkout = document["components"]["schemas"]["CheckOutRequest"]

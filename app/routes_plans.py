@@ -24,13 +24,13 @@ def _positive_int(value: Any, field: str) -> int:
 
 def _price(value: Any) -> Decimal:
     if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
-        raise ValidationError("price must be a positive amount")
+        raise ValidationError("price must be a non-negative amount")
     try:
         amount = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise ValidationError("price must be a positive amount") from exc
-    if not amount.is_finite() or amount <= 0 or amount.as_tuple().exponent < -2 or amount > Decimal("99999999.99"):
-        raise ValidationError("price must be a positive amount with at most two decimal places")
+        raise ValidationError("price must be a non-negative amount") from exc
+    if not amount.is_finite() or amount < 0 or amount.as_tuple().exponent < -2 or amount > Decimal("99999999.99"):
+        raise ValidationError("price must be a non-negative amount with at most two decimal places")
     return amount.quantize(Decimal("0.01"))
 
 
@@ -124,7 +124,7 @@ def register_plan_routes(app: Bottle) -> None:
         session.commit()
         return success(_plan_data(plan), "Membership plan updated")
 
-    @app.post("/api/membership-plans/<plan_id:int>/deactivate")
+    @app.delete("/api/membership-plans/<plan_id:int>")
     @require_auth(UserRole.ADMIN)
     def deactivate_plan(plan_id: int) -> Any:
         session: Session = request.environ["gym.db"]

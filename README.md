@@ -25,12 +25,14 @@ python -c 'import secrets; print(secrets.token_urlsafe(48))'
 | `JWT_ISSUER` | no | JWT issuer, default `gym-api`. |
 | `JWT_ACCESS_TTL_SECONDS` | no | Access-token lifetime, default `900`. |
 | `JWT_REFRESH_TTL_SECONDS` | no | Refresh-token lifetime, default `604800`. |
-| `APP_ENV` | no | Deployment label, default `production`. |
+| `APP_ENV` | no | Deployment label, default `production`. Set `test` only for isolated test runs. |
+| `HOST` | no | Gunicorn bind host, default `0.0.0.0`. |
+| `PORT` | no | Gunicorn bind port, default `8000`; must be a positive integer. |
 | `CORS_ORIGINS` | no | Comma-separated explicit allowed origins. |
 | `LOG_LEVEL` | no | Python log level, default `INFO`. |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS` | no | Gunicorn process/thread counts. |
 
-`JWT_ACCESS_TOKEN_MINUTES` and `JWT_REFRESH_TOKEN_DAYS` remain accepted only for backwards compatibility; prefer the TTL-in-seconds variables above. Docker Compose additionally reads `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` to initialize MySQL.
+`DATABASE_URL` has no production/development fallback and must be supplied whenever `APP_ENV` is not `test`. Test mode may use its isolated in-memory SQLite default, but CI and local tests should explicitly set a temporary SQLite `DATABASE_URL` as shown below. `HOST` and `PORT` control the Gunicorn bind address. `JWT_ACCESS_TOKEN_MINUTES` and `JWT_REFRESH_TOKEN_DAYS` remain accepted only for backwards compatibility; prefer the TTL-in-seconds variables above. Docker Compose additionally reads `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_ROOT_PASSWORD` to initialize MySQL.
 
 ## Local setup
 
@@ -40,8 +42,10 @@ python3.13 -m venv .venv
 pip install -r requirements.txt
 export JWT_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
 export DATABASE_URL='sqlite:///gym.db'
+export HOST=0.0.0.0
+export PORT=8000
 alembic upgrade head
-gunicorn --bind 0.0.0.0:8000 'app.main:create_app()'
+gunicorn --bind "$HOST:$PORT" 'app.main:create_app()'
 ```
 
 The health endpoint is `GET /health` (also available at `/api/health`). The OpenAPI document is served at `GET /api/openapi.json` in the API response envelope.
@@ -122,6 +126,7 @@ Errors use the same envelope with `success: false`, a safe `message`, and `error
 Use a temporary SQLite database and a test-only JWT secret. Never point tests at production.
 
 ```sh
+export APP_ENV=test
 export JWT_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 export DATABASE_URL='sqlite:///'
 pytest -q
