@@ -41,3 +41,14 @@
 - Canonical public routes are implemented, documented, tested, and OpenAPI-described: `/api/membership-plans`, `GET /api/members/{member_id}/memberships`, and JSON-body `POST /api/attendance/check-out`.
 - Follow-on migration `20250102_0002` reconciles plan/membership/attendance persistence fields from initial schema and passed SQLite upgrade verification.
 - Production entrypoint no longer invokes Bottle development `run()`; Gunicorn is required by the executable/start-script contract.
+
+## Verifier gap-fix plan
+- [ ] STEP gap-fix design/scaffold: canonical deactivation is `DELETE /api/membership-plans/{plan_id}`; the legacy POST action is removed. Production configuration requires `DATABASE_URL`; `HOST` and `PORT` are environment-backed and documented. Monetary amounts are decimal non-negative (`>= 0`).
+- [ ] Core contract group: environment config, redacted structured database logging, and OpenAPI corrections. OpenAPI contracts: registration phone lives exclusively in `profile.phone`; plan `features` accepts object or array JSON; Error responses include `METHOD_NOT_ALLOWED`/405.
+- [ ] Membership/attendance migration group: membership status deployment contract includes `pending`, plan DELETE deactivation, and attendance requires both an active subscription and member `membership_status == active`.
+- [ ] Verification group: expand API/migration security coverage for workouts, payments, zero amounts, CORS/security headers, redaction, and schema upgrade/downgrade; regenerate observed reports after runtime verification.
+
+## Gap-fix decisions
+- Migration revision will follow `20250102_0002`, remain SQLite/MySQL compatible, and represent membership-status compatibility without relying on database-native enum alteration (the deployed contract is enforced by the application enum/check-compatible column values and migration schema test).
+- Redacted operational logs contain only a fixed event name and request ID; they never attach exceptions, SQL, values, request bodies, headers, card fields, or traceback data for database exceptions.
+- Workout scenarios are tested via existing authenticated API flows: trainer creates/replaces exercises and assigns workouts; members retrieve only assigned workouts; unrelated members are denied.
