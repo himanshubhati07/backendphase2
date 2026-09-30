@@ -1,9 +1,4 @@
-"""Flask blueprint for the attendance resource.
-
-The application factory supplies an AttendanceService and decides any API
-version prefix when registering this blueprint; this module owns no global app
-wiring.
-"""
+"""Injectable Flask blueprint for the attendance resource."""
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -18,14 +13,7 @@ _MAX_PER_PAGE = 100
 
 
 def _error(code: str, message: str, status: int, details: dict[str, Any] | None = None) -> tuple[Response, int]:
-    payload: dict[str, Any] = {
-        "error": {
-            "code": code,
-            "message": message,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "correlation_id": getattr(g, "correlation_id", None),
-        }
-    }
+    payload: dict[str, Any] = {"error": {"code": code, "message": message, "timestamp": datetime.now(timezone.utc).isoformat(), "correlation_id": getattr(g, "correlation_id", None)}}
     if details:
         payload["error"]["details"] = details
     return jsonify(payload), status
@@ -48,8 +36,8 @@ def _date_argument(name: str) -> date | None:
         raise ValueError(f"{name} must be an ISO-8601 date (YYYY-MM-DD)") from error
 
 
-def _pagination_and_filters(*, allow_member_filter: bool) -> tuple[int, int, UUID | None, date | None, date | None]:
-    allowed = {"page", "per_page", "date_from", "date_to"}
+def _pagination_and_filters(*, allow_member_filter: bool) -> tuple[int, int, UUID | None, date | None, date | None, date | None]:
+    allowed = {"page", "per_page", "date", "date_from", "date_to"}
     if allow_member_filter:
         allowed.add("member_id")
     unknown = set(request.args) - allowed
@@ -65,11 +53,16 @@ def _pagination_and_filters(*, allow_member_filter: bool) -> tuple[int, int, UUI
     if not 1 <= per_page <= _MAX_PER_PAGE:
         raise ValueError(f"per_page must be between 1 and {_MAX_PER_PAGE}")
     member_id = _uuid(request.args["member_id"], "member_id") if "member_id" in request.args else None
+    checked_in_on = _date_argument("date")
     date_from = _date_argument("date_from")
     date_to = _date_argument("date_to")
+    # Exact-calendar-date filtering is intentionally unambiguous: it cannot
+    # be mixed with a range filter.
+    if checked_in_on is not None and (date_from is not None or date_to is not None):
+        raise ValueError("date cannot be combined with date_from or date_to")
     if date_from is not None and date_to is not None and date_from > date_to:
         raise ValueError("date_from must not be after date_to")
-    return page, per_page, member_id, date_from, date_to
+    return page, per_page, member_id, checked_in_on, date_from, date_to
 
 
 def _page(items: list[Any], page: int, per_page: int, total: int) -> Response:
@@ -77,13 +70,7 @@ def _page(items: list[Any], page: int, per_page: int, total: int) -> Response:
 
 
 def create_attendance_blueprint(service: AttendanceService) -> Blueprint:
-    """Create the independently injectable attendance blueprint.
-
-    Routes are relative to the version prefix selected by the app factory:
-    ``POST /members/<member_id>/attendance/check-in``,
-    ``PATCH /attendance/<attendance_id>/check-out``,
-    ``GET /members/<member_id>/attendance``, and ``GET /attendance``.
-    """
+    """Create routes relative to the API version prefix selected by the app."""
     blueprint = Blueprint("attendance", __name__)
 
     @blueprint.errorhandler(AttendanceError)
@@ -110,25 +97,19 @@ def create_attendance_blueprint(service: AttendanceService) -> Blueprint:
     def member_history(member_id: str):
         try:
             parsed_member_id = _uuid(member_id, "member_id")
-            page, per_page, _, date_from, date_to = _pagination_and_filters(allow_member_filter=False)
+            page, per_page, _, checked_in_on, date_from, date_to = _pagination_and_filters(allow_member_filter=False)
         except ValueError as error:
             return _error("validation_error", str(error), 400)
-        items, total = service.member_history(
-            parsed_member_id, page=page, per_page=per_page,
-            checked_in_from=date_from, checked_in_to=date_to,
-        )
+        items, total = service.member_history(parsed_member_id, page=page, per_page=per_page, checked_in_on=checked_in_on, checked_in_from=date_from, checked_in_to=date_to)
         return _page(items, page, per_page, total)
 
     @blueprint.get("/attendance")
     def list_attendance():
         try:
-            page, per_page, member_id, date_from, date_to = _pagination_and_filters(allow_member_filter=True)
+            page, per_page, member_id, checked_in_on, date_from, date_to = _pagination_and_filters(allow_member_filter=True)
         except ValueError as error:
             return _error("validation_error", str(error), 400)
-        items, total = service.search(
-            page=page, per_page=per_page, member_id=member_id,
-            checked_in_from=date_from, checked_in_to=date_to,
-        )
+        items, total = service.search(page=page, per_page=per_page, member_id=member_id, checked_in_on=checked_in_on, checked_in_from=date_from, checked_in_to=date_to)
         return _page(items, page, per_page, total)
 
     return blueprint

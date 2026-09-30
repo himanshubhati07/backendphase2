@@ -25,7 +25,9 @@ def create_memberships_blueprint(service: MembershipService) -> Blueprint:
     Application wiring owns construction of the transaction manager, repository,
     event producer, and registration of this blueprint.
     """
-    blueprint = Blueprint("memberships", __name__, url_prefix="/api/v1")
+    # The application registers this resource beneath /api/v1; keeping route
+    # declarations relative prevents an accidental /api/v1/api/v1 prefix.
+    blueprint = Blueprint("memberships", __name__)
 
     @blueprint.post("/membership-plans")
     def create_membership_plan():
@@ -47,7 +49,6 @@ def create_memberships_blueprint(service: MembershipService) -> Blueprint:
 
     @blueprint.delete("/memberships/<uuid:membership_id>")
     def cancel_membership(membership_id: UUID):
-        # DELETE accepts an optional cancellation_reason and is otherwise bodyless.
         return jsonify(service.cancel(membership_id, _json_object(allow_empty=True))), 200
 
     return blueprint

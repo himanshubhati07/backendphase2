@@ -27,9 +27,10 @@
 | Remediation | Status |
 |---|---|
 | Design | complete |
-| Membership lifecycle | pending delegated implementation |
-| Attendance lifecycle | pending delegated implementation |
-| Shared API/OpenAPI/tests/reports | pending |
+| Membership lifecycle | complete |
+| Attendance lifecycle | complete |
+| Shared API/OpenAPI/tests | complete; verification pending |
+| Reports | pending live verification |
 
 ## Unit status
 - Trainer resource group complete: added injected direct-SQL trainer repository, transactional service with duplicate-email conflict mapping, JSON DTO, and injectable Flask CRUD/list route registration for `/api/v1/trainers`.
@@ -42,3 +43,9 @@
 
 ## Unit status
 - Member resource complete: added JSON DTO serialization, parameterized psycopg repository, injected transactional service, and injectable Flask route registration. Implements member CRUD and deterministic paginated listing; creation publishes `member.created` only after the transaction context exits.
+
+## Unit status
+- Membership lifecycle remediation complete: migrated membership persistence and API DTO/service/repository behavior to `plan_id`, removed cancellation-reason storage/handling, added start/end-date lifecycle validation and relative `/api/v1` routes, refreshed sample assignment request, and added focused service/route tests.
+
+## Unit status
+- Attendance lifecycle remediation complete: repository methods now require the active caller-provided connection, service transactions commit before `attendance.marked` publication, and `date=YYYY-MM-DD` exact-date filtering is mutually exclusive with range filters. Added PostgreSQL integration coverage (skips without `TEST_DATABASE_URL` and `TEST_API_KEY`).

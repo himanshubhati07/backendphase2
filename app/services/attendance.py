@@ -1,13 +1,27 @@
-"""Attendance application service and resource-level errors."""
+"""Attendance application service, transaction boundary, and domain errors."""
 from __future__ import annotations
 
-from contextlib import nullcontext
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID
 
 from app.dtos.attendance import AttendanceDTO
-from app.repositories.attendance import AttendanceRepository
+
+
+class AttendanceRepositoryPort(Protocol):
+    def check_in(self, connection: Any, member_id: UUID) -> AttendanceDTO: ...
+    def get(self, connection: Any, attendance_id: UUID) -> AttendanceDTO | None: ...
+    def check_out(self, connection: Any, attendance_id: UUID) -> AttendanceDTO | None: ...
+    def list_for_member(self, connection: Any, member_id: UUID, *, page: int, per_page: int, checked_in_on: date | None = None, checked_in_from: date | None = None, checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
+    def list(self, connection: Any, *, page: int, per_page: int, member_id: UUID | None = None, checked_in_on: date | None = None, checked_in_from: date | None = None, checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
+
+
+class TransactionManagerPort(Protocol):
+    def transaction(self) -> Any: ...
+
+
+class EventProducerPort(Protocol):
+    def publish(self, event_type: str, payload: dict[str, Any]) -> None: ...
 
 
 class AttendanceError(Exception):
@@ -31,55 +45,42 @@ class AttendanceConflictError(AttendanceError):
 
 
 class AttendanceService:
-    """Coordinates repository writes, transactions, and post-commit events.
+    """Owns every attendance transaction and publishes only after commit."""
 
-    ``transaction_manager`` may be omitted where the injected connection's
-    transaction context is already owned by the caller.  In production it is
-    normally an object exposing ``transaction()``.
-    """
-    def __init__(self, repository: AttendanceRepository, event_publisher: Any,
-                 transaction_manager: Any | None = None) -> None:
+    def __init__(self, transactions: TransactionManagerPort,
+                 repository: AttendanceRepositoryPort,
+                 event_producer: EventProducerPort) -> None:
+        self._transactions = transactions
         self._repository = repository
-        self._event_publisher = event_publisher
-        self._transaction_manager = transaction_manager
-
-    def _transaction(self):
-        if self._transaction_manager is None:
-            return nullcontext()
-        transaction = getattr(self._transaction_manager, "transaction", None)
-        return transaction() if transaction is not None else self._transaction_manager
+        self._event_producer = event_producer
 
     @staticmethod
     def _is_unique_violation(error: Exception) -> bool:
-        # psycopg's UniqueViolation and a database-agnostic fake both expose
-        # SQLSTATE 23505.  Avoid tying domain code to a driver exception class.
         return getattr(error, "sqlstate", None) == "23505"
 
     def _publish_marked(self, attendance: AttendanceDTO, action: str) -> None:
-        event = {
-            "type": "attendance.marked",
+        # KafkaEventProducer supplies the outer event_type/occurred_at envelope.
+        self._event_producer.publish("attendance.marked", {
             "action": action,
-            "data": attendance.to_dict(),
-        }
-        self._event_publisher.publish(event)
+            "attendance": attendance.to_dict(),
+        })
 
     def check_in(self, member_id: UUID) -> AttendanceDTO:
         try:
-            with self._transaction():
-                attendance = self._repository.check_in(member_id)
+            with self._transactions.transaction() as connection:
+                attendance = self._repository.check_in(connection, member_id)
         except Exception as error:
             if self._is_unique_violation(error):
                 raise AttendanceConflictError("Member already has an open attendance") from error
             raise
-        # This line runs only after the transaction context has committed.
         self._publish_marked(attendance, "check_in")
         return attendance
 
     def check_out(self, attendance_id: UUID) -> AttendanceDTO:
-        with self._transaction():
-            attendance = self._repository.check_out(attendance_id)
+        with self._transactions.transaction() as connection:
+            attendance = self._repository.check_out(connection, attendance_id)
             if attendance is None:
-                existing = self._repository.get(attendance_id)
+                existing = self._repository.get(connection, attendance_id)
                 if existing is None:
                     raise AttendanceNotFoundError("Attendance was not found")
                 raise AttendanceConflictError("Attendance has already been checked out")
@@ -87,17 +88,23 @@ class AttendanceService:
         return attendance
 
     def member_history(self, member_id: UUID, *, page: int, per_page: int,
+                       checked_in_on: date | None = None,
                        checked_in_from: date | None = None,
                        checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]:
-        return self._repository.list_for_member(
-            member_id, page=page, per_page=per_page,
-            checked_in_from=checked_in_from, checked_in_to=checked_in_to,
-        )
+        with self._transactions.transaction() as connection:
+            return self._repository.list_for_member(
+                connection, member_id, page=page, per_page=per_page,
+                checked_in_on=checked_in_on, checked_in_from=checked_in_from,
+                checked_in_to=checked_in_to,
+            )
 
     def search(self, *, page: int, per_page: int, member_id: UUID | None = None,
+               checked_in_on: date | None = None,
                checked_in_from: date | None = None,
                checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]:
-        return self._repository.list(
-            page=page, per_page=per_page, member_id=member_id,
-            checked_in_from=checked_in_from, checked_in_to=checked_in_to,
-        )
+        with self._transactions.transaction() as connection:
+            return self._repository.list(
+                connection, page=page, per_page=per_page, member_id=member_id,
+                checked_in_on=checked_in_on, checked_in_from=checked_in_from,
+                checked_in_to=checked_in_to,
+            )

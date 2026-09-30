@@ -96,10 +96,10 @@ class MembershipRepository:
             cursor.execute(
                 """
                 INSERT INTO memberships
-                    (id, member_id, membership_plan_id, start_date, end_date, status)
+                    (id, member_id, plan_id, start_date, end_date, status)
                 VALUES (%s, %s, %s, %s, %s, 'active')
-                RETURNING id, member_id, membership_plan_id, start_date, end_date,
-                          status, cancelled_at, cancellation_reason, created_at, updated_at
+                RETURNING id, member_id, plan_id, start_date, end_date,
+                          status, cancelled_at, created_at, updated_at
                 """,
                 (membership_id, member_id, plan_id, start_date, end_date),
             )
@@ -107,8 +107,8 @@ class MembershipRepository:
 
     def get_membership(self, connection: Any, membership_id: UUID, *, lock: bool = False) -> dict[str, Any] | None:
         query = """
-            SELECT id, member_id, membership_plan_id, start_date, end_date, status,
-                   cancelled_at, cancellation_reason, created_at, updated_at
+            SELECT id, member_id, plan_id, start_date, end_date, status,
+                   cancelled_at, created_at, updated_at
             FROM memberships WHERE id = %s
         """
         if lock:
@@ -130,30 +130,27 @@ class MembershipRepository:
             cursor.execute(
                 """
                 UPDATE memberships
-                SET membership_plan_id = %s, start_date = %s, end_date = %s, updated_at = NOW()
+                SET plan_id = %s, start_date = %s, end_date = %s, updated_at = NOW()
                 WHERE id = %s AND status = 'active'
-                RETURNING id, member_id, membership_plan_id, start_date, end_date,
-                          status, cancelled_at, cancellation_reason, created_at, updated_at
+                RETURNING id, member_id, plan_id, start_date, end_date,
+                          status, cancelled_at, created_at, updated_at
                 """,
                 (plan_id, start_date, end_date, membership_id),
             )
             return self._one(cursor)
 
-    def cancel_membership(
-        self, connection: Any, *, membership_id: UUID, reason: str | None
-    ) -> dict[str, Any] | None:
+    def cancel_membership(self, connection: Any, *, membership_id: UUID) -> dict[str, Any] | None:
         # A cancellation is a state transition, not a delete, so history remains
         # available to reporting and prevents a second cancellation event.
         with connection.cursor() as cursor:
             cursor.execute(
                 """
                 UPDATE memberships
-                SET status = 'cancelled', cancelled_at = NOW(), cancellation_reason = %s,
-                    updated_at = NOW()
+                SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
                 WHERE id = %s AND status = 'active'
-                RETURNING id, member_id, membership_plan_id, start_date, end_date,
-                          status, cancelled_at, cancellation_reason, created_at, updated_at
+                RETURNING id, member_id, plan_id, start_date, end_date,
+                          status, cancelled_at, created_at, updated_at
                 """,
-                (reason, membership_id),
+                (membership_id,),
             )
             return self._one(cursor)

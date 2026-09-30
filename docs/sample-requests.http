@@ -49,7 +49,7 @@ POST {{baseUrl}}/api/v1/members/{{memberId}}/memberships
 X-API-Key: {{apiKey}}
 Content-Type: application/json
 
-{"membership_plan_id":"{{planId}}"}
+{"plan_id":"{{planId}}","start_date":"2030-01-01"}
 GET {{baseUrl}}/api/v1/memberships/{{membershipId}}
 X-API-Key: {{apiKey}}
 PATCH {{baseUrl}}/api/v1/memberships/{{membershipId}}
