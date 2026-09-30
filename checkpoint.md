@@ -18,6 +18,19 @@
 - Independent resource groups: members/trainers; plans/memberships; attendance. Shared contract: UUID JSON strings; errors `{error:{code,message,timestamp,correlation_id,details?}}`; pagination `{items,page,per_page,total}`; API key `X-API-Key`.
 - Events are post-commit JSON envelopes on configured topic: member.created, membership.assigned/cancelled, attendance.marked `{action: check_in|check_out}`.
 
+## Remediation design
+- Membership contract uses `plan_id` (database, DTOs, routes, samples, OpenAPI); assignment accepts optional ISO `start_date`/`end_date`, enforces `end_date > start_date`, defaults end date to `start_date + duration_days`, and active PATCH accepts `plan_id`, `start_date`, and `end_date` with chronology validation.
+- Attendance repository receives the transaction connection in every operation; AttendanceService owns the transaction manager and invokes the producer after a successful commit using `publish(event_type, payload)`. `date=YYYY-MM-DD` means that local checked-in calendar date and is mutually exclusive with range filters.
+- Independent remediation groups: membership lifecycle (including migration/routes/tests) and attendance lifecycle (repository/service/routes/PostgreSQL tests). Shared shell/OpenAPI/report work will be completed after both groups.
+- Verification requires Docker PostgreSQL/Kafka infra, migration, pytest, and live HTTP checks including `/docs` and `/openapi.json`.
+
+| Remediation | Status |
+|---|---|
+| Design | complete |
+| Membership lifecycle | pending delegated implementation |
+| Attendance lifecycle | pending delegated implementation |
+| Shared API/OpenAPI/tests/reports | pending |
+
 ## Unit status
 - Trainer resource group complete: added injected direct-SQL trainer repository, transactional service with duplicate-email conflict mapping, JSON DTO, and injectable Flask CRUD/list route registration for `/api/v1/trainers`.
 
