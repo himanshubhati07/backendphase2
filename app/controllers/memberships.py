@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from flask import Blueprint, jsonify, request
 
 from app.errors import ValidationError
 from app.services.memberships import MembershipService
+from app.validation import require_uuid
 
 
 def _json_object(*, allow_empty: bool = False) -> dict[str, Any]:
@@ -34,21 +34,21 @@ def create_memberships_blueprint(service: MembershipService) -> Blueprint:
         result = service.create_plan(_json_object())
         return jsonify(result), 201
 
-    @blueprint.post("/members/<uuid:member_id>/memberships")
-    def assign_membership(member_id: UUID):
-        result = service.assign(member_id, _json_object())
+    @blueprint.post("/members/<member_id>/memberships")
+    def assign_membership(member_id: str):
+        result = service.assign(require_uuid(member_id, "member_id"), _json_object())
         return jsonify(result), 201
 
-    @blueprint.get("/memberships/<uuid:membership_id>")
-    def get_membership(membership_id: UUID):
-        return jsonify(service.get(membership_id)), 200
+    @blueprint.get("/memberships/<membership_id>")
+    def get_membership(membership_id: str):
+        return jsonify(service.get(require_uuid(membership_id, "membership_id"))), 200
 
-    @blueprint.patch("/memberships/<uuid:membership_id>")
-    def patch_membership(membership_id: UUID):
-        return jsonify(service.patch(membership_id, _json_object())), 200
+    @blueprint.patch("/memberships/<membership_id>")
+    def patch_membership(membership_id: str):
+        return jsonify(service.patch(require_uuid(membership_id, "membership_id"), _json_object())), 200
 
-    @blueprint.delete("/memberships/<uuid:membership_id>")
-    def cancel_membership(membership_id: UUID):
-        return jsonify(service.cancel(membership_id, _json_object(allow_empty=True))), 200
+    @blueprint.delete("/memberships/<membership_id>")
+    def cancel_membership(membership_id: str):
+        return jsonify(service.cancel(require_uuid(membership_id, "membership_id"), _json_object(allow_empty=True))), 200
 
     return blueprint

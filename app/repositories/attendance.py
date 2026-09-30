@@ -19,6 +19,15 @@ class AttendanceRepository:
         row = cursor.fetchone()
         return AttendanceDTO.from_row(row) if row is not None else None
 
+    def member_exists(self, connection: Any, member_id: UUID) -> bool:
+        """Lock the member key until this caller's transaction completes."""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM members WHERE id = %s FOR KEY SHARE",
+                (member_id,),
+            )
+            return cursor.fetchone() is not None
+
     def check_in(self, connection: Any, member_id: UUID) -> AttendanceDTO:
         # The partial unique index on member_id WHERE checked_out_at IS NULL is
         # the authority that prevents concurrent open attendances.
@@ -59,30 +68,25 @@ class AttendanceRepository:
 
     def list_for_member(
         self, connection: Any, member_id: UUID, *, page: int, per_page: int,
-        checked_in_on: date | None = None, checked_in_from: date | None = None,
-        checked_in_to: date | None = None,
+        checked_in_on: date | None = None,
     ) -> tuple[list[AttendanceDTO], int]:
         return self._list(
             connection, member_id=member_id, page=page, per_page=per_page,
-            checked_in_on=checked_in_on, checked_in_from=checked_in_from,
-            checked_in_to=checked_in_to,
+            checked_in_on=checked_in_on,
         )
 
     def list(
         self, connection: Any, *, page: int, per_page: int,
         member_id: UUID | None = None, checked_in_on: date | None = None,
-        checked_in_from: date | None = None, checked_in_to: date | None = None,
     ) -> tuple[list[AttendanceDTO], int]:
         return self._list(
             connection, member_id=member_id, page=page, per_page=per_page,
-            checked_in_on=checked_in_on, checked_in_from=checked_in_from,
-            checked_in_to=checked_in_to,
+            checked_in_on=checked_in_on,
         )
 
     def _list(
         self, connection: Any, *, member_id: UUID | None, page: int,
-        per_page: int, checked_in_on: date | None, checked_in_from: date | None,
-        checked_in_to: date | None,
+        per_page: int, checked_in_on: date | None,
     ) -> tuple[list[AttendanceDTO], int]:
         where: list[str] = []
         params: list[Any] = []
@@ -94,12 +98,6 @@ class AttendanceRepository:
             # matching the existing expression index on checked_in_at::date.
             where.append("checked_in_at::date = %s")
             params.append(checked_in_on)
-        if checked_in_from is not None:
-            where.append("checked_in_at >= %s")
-            params.append(checked_in_from)
-        if checked_in_to is not None:
-            where.append("checked_in_at < (%s::date + INTERVAL '1 day')")
-            params.append(checked_in_to)
         clause = " WHERE " + " AND ".join(where) if where else ""
         with connection.cursor() as cursor:
             cursor.execute("SELECT count(*) FROM attendance" + clause, tuple(params))

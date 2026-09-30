@@ -91,15 +91,35 @@ def test_patch_recomputes_omitted_end_when_start_changes():
     assert repository.updated["end_date"] == date(2030, 3, 3)
 
 
-def test_membership_blueprint_routes_are_relative_to_api_prefix():
+def test_membership_blueprint_routes_are_relative_to_api_prefix_and_parse_string_ids():
     from flask import Flask
     from app.controllers.memberships import create_memberships_blueprint
 
     app = Flask(__name__)
     app.register_blueprint(create_memberships_blueprint(service()[0]), url_prefix="/api/v1")
     paths = {rule.rule for rule in app.url_map.iter_rules()}
-    assert "/api/v1/members/<uuid:member_id>/memberships" in paths
-    assert "/api/v1/api/v1/members/<uuid:member_id>/memberships" not in paths
+    assert "/api/v1/members/<member_id>/memberships" in paths
+    assert "/api/v1/memberships/<membership_id>" in paths
+    assert not any("<uuid:" in path for path in paths)
+    assert "/api/v1/api/v1/members/<member_id>/memberships" not in paths
+
+
+def test_plan_creation_rejects_unknown_fields():
+    subject, _ = service()
+
+    with pytest.raises(ValidationError, match="only name"):
+        subject.create_plan({
+            "name": "Monthly", "duration_days": 30, "price": 25,
+            "unexpected": True,
+        })
+
+
+def test_membership_plan_openapi_price_is_a_number():
+    from app.openapi import openapi_document
+
+    plan = openapi_document()["components"]["schemas"]["MembershipPlan"]
+    assert plan["properties"]["price"] == {"type": "number", "minimum": 0}
+    assert openapi_document()["components"]["schemas"]["MembershipPlanWrite"]["additionalProperties"] is False
 
 
 def test_assignment_route_requires_json_object():

@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 from app.database.connection import TransactionManager
 from app.repositories.attendance import AttendanceRepository
-from app.services.attendance import AttendanceService
+from app.services.attendance import AttendanceMemberNotFoundError, AttendanceService
 
 
 class RecordingProducer:
@@ -87,7 +87,16 @@ def test_history_and_exact_date_filtering(attendance_service, member_id: UUID) -
     assert missing_items == []
     assert missing_total == 0
 
-    # A range remains supported and includes the entire supplied end date.
-    ranged, ranged_total = service.member_history(member_id, page=1, per_page=20, checked_in_from=date.today(), checked_in_to=date.today())
-    assert ranged_total == 1
-    assert ranged[0].id == checked_in.id
+
+
+def test_missing_member_is_not_found_before_check_in_or_history(attendance_service) -> None:
+    service, _, producer = attendance_service
+    missing_member = uuid4()
+
+    with pytest.raises(AttendanceMemberNotFoundError):
+        service.check_in(missing_member)
+    with pytest.raises(AttendanceMemberNotFoundError):
+        service.member_history(missing_member, page=1, per_page=20)
+
+    # Neither failed transaction is eligible to produce a post-commit event.
+    assert producer.events == []

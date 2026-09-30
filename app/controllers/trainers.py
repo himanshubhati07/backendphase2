@@ -6,7 +6,6 @@ blueprint applies its shared API-key policy to every registered business route.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 
 from flask import Blueprint, jsonify, request
 
@@ -15,6 +14,7 @@ from app.validation import (
     optional_string,
     parse_pagination,
     reject_unknown_fields,
+    require_uuid,
     require_json_object,
     required_string,
 )
@@ -58,15 +58,15 @@ def register_routes(blueprint: Blueprint, service: TrainerService) -> None:
         page, per_page = parse_pagination(request.args)
         return jsonify(service.list(page=page, per_page=per_page))
 
-    @blueprint.get("/trainers/<uuid:trainer_id>")
-    def get_trainer(trainer_id: UUID):
-        return jsonify(service.get(trainer_id))
+    @blueprint.get("/trainers/<trainer_id>")
+    def get_trainer(trainer_id: str):
+        return jsonify(service.get(require_uuid(trainer_id, "trainer_id")))
 
-    @blueprint.patch("/trainers/<uuid:trainer_id>")
-    def update_trainer(trainer_id: UUID):
-        return jsonify(service.update(trainer_id, _payload(partial=True)))
+    @blueprint.patch("/trainers/<trainer_id>")
+    def update_trainer(trainer_id: str):
+        return jsonify(service.update(require_uuid(trainer_id, "trainer_id"), _payload(partial=True)))
 
-    @blueprint.delete("/trainers/<uuid:trainer_id>")
-    def delete_trainer(trainer_id: UUID):
-        service.delete(trainer_id)
+    @blueprint.delete("/trainers/<trainer_id>")
+    def delete_trainer(trainer_id: str):
+        service.delete(require_uuid(trainer_id, "trainer_id"))
         return "", 204

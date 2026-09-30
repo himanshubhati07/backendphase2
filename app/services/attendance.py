@@ -9,11 +9,12 @@ from app.dtos.attendance import AttendanceDTO
 
 
 class AttendanceRepositoryPort(Protocol):
+    def member_exists(self, connection: Any, member_id: UUID) -> bool: ...
     def check_in(self, connection: Any, member_id: UUID) -> AttendanceDTO: ...
     def get(self, connection: Any, attendance_id: UUID) -> AttendanceDTO | None: ...
     def check_out(self, connection: Any, attendance_id: UUID) -> AttendanceDTO | None: ...
-    def list_for_member(self, connection: Any, member_id: UUID, *, page: int, per_page: int, checked_in_on: date | None = None, checked_in_from: date | None = None, checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
-    def list(self, connection: Any, *, page: int, per_page: int, member_id: UUID | None = None, checked_in_on: date | None = None, checked_in_from: date | None = None, checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
+    def list_for_member(self, connection: Any, member_id: UUID, *, page: int, per_page: int, checked_in_on: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
+    def list(self, connection: Any, *, page: int, per_page: int, member_id: UUID | None = None, checked_in_on: date | None = None) -> tuple[list[AttendanceDTO], int]: ...
 
 
 class TransactionManagerPort(Protocol):
@@ -37,6 +38,11 @@ class AttendanceError(Exception):
 class AttendanceNotFoundError(AttendanceError):
     status_code = 404
     code = "attendance_not_found"
+
+
+class AttendanceMemberNotFoundError(AttendanceError):
+    status_code = 404
+    code = "member_not_found"
 
 
 class AttendanceConflictError(AttendanceError):
@@ -65,9 +71,18 @@ class AttendanceService:
             "attendance": attendance.to_dict(),
         })
 
+    @staticmethod
+    def _member_not_found(member_id: UUID) -> None:
+        raise AttendanceMemberNotFoundError(f"Member {member_id} was not found")
+
     def check_in(self, member_id: UUID) -> AttendanceDTO:
         try:
             with self._transactions.transaction() as connection:
+                # This lookup and insert share one transaction. Besides giving
+                # callers a deterministic 404, FOR KEY SHARE in the repository
+                # prevents a concurrent member deletion before the insert.
+                if not self._repository.member_exists(connection, member_id):
+                    self._member_not_found(member_id)
                 attendance = self._repository.check_in(connection, member_id)
         except Exception as error:
             if self._is_unique_violation(error):
@@ -88,23 +103,19 @@ class AttendanceService:
         return attendance
 
     def member_history(self, member_id: UUID, *, page: int, per_page: int,
-                       checked_in_on: date | None = None,
-                       checked_in_from: date | None = None,
-                       checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]:
+                       checked_in_on: date | None = None) -> tuple[list[AttendanceDTO], int]:
         with self._transactions.transaction() as connection:
+            if not self._repository.member_exists(connection, member_id):
+                self._member_not_found(member_id)
             return self._repository.list_for_member(
                 connection, member_id, page=page, per_page=per_page,
-                checked_in_on=checked_in_on, checked_in_from=checked_in_from,
-                checked_in_to=checked_in_to,
+                checked_in_on=checked_in_on,
             )
 
     def search(self, *, page: int, per_page: int, member_id: UUID | None = None,
-               checked_in_on: date | None = None,
-               checked_in_from: date | None = None,
-               checked_in_to: date | None = None) -> tuple[list[AttendanceDTO], int]:
+               checked_in_on: date | None = None) -> tuple[list[AttendanceDTO], int]:
         with self._transactions.transaction() as connection:
             return self._repository.list(
                 connection, page=page, per_page=per_page, member_id=member_id,
-                checked_in_on=checked_in_on, checked_in_from=checked_in_from,
-                checked_in_to=checked_in_to,
+                checked_in_on=checked_in_on,
             )

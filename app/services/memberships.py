@@ -67,6 +67,13 @@ class MembershipService:
             raise ValidationError("end_date must be later than start_date")
 
     def create_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Keep the runtime contract aligned with MembershipPlanWrite's
+        # additionalProperties: false declaration.
+        self._validate_fields(
+            payload,
+            {"name", "description", "duration_days", "price", "is_active"},
+            "only name, description, duration_days, price, and is_active are accepted",
+        )
         name = self._required_string(payload, "name")
         description = payload.get("description")
         if description is not None and not isinstance(description, str):
