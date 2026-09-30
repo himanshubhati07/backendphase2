@@ -37,11 +37,12 @@ def _pagination(*, member_filter: bool = False, attendance_filters: bool = False
     if member_filter:
         parameters.append({"name": "member_id", "in": "query", "schema": _UUID})
     if attendance_filters:
-        parameters.extend([
-            {"name": "date", "in": "query", "description": "Exact checked-in calendar date; cannot be combined with date_from/date_to.", "schema": _DATE},
-            {"name": "date_from", "in": "query", "schema": _DATE},
-            {"name": "date_to", "in": "query", "schema": _DATE},
-        ])
+        parameters.append({
+            "name": "date",
+            "in": "query",
+            "description": "Exact checked-in calendar date.",
+            "schema": _DATE,
+        })
     return parameters
 
 
@@ -85,9 +86,9 @@ def openapi_document() -> dict:
             "post": _secured({"requestBody": _body("TrainerWrite"), "responses": {"201": _response("Trainer created", {"$ref": "#/components/schemas/Trainer"}), **_error_responses("400", "401", "409")}}),
         },
         "/api/v1/trainers/{trainer_id}": {
-            "get": _secured({"parameters": _path_id("trainer_id"), "responses": {"200": _response("Trainer", {"$ref": "#/components/schemas/Trainer"}), **_error_responses("401", "404")}}),
+            "get": _secured({"parameters": _path_id("trainer_id"), "responses": {"200": _response("Trainer", {"$ref": "#/components/schemas/Trainer"}), **_error_responses("400", "401", "404")}}),
             "patch": _secured({"parameters": _path_id("trainer_id"), "requestBody": _body("TrainerWrite"), "responses": {"200": _response("Trainer updated", {"$ref": "#/components/schemas/Trainer"}), **_error_responses("400", "401", "404", "409")}}),
-            "delete": _secured({"parameters": _path_id("trainer_id"), "responses": {"204": _response("Trainer deleted"), **_error_responses("401", "404")}}),
+            "delete": _secured({"parameters": _path_id("trainer_id"), "responses": {"204": _response("Trainer deleted"), **_error_responses("400", "401", "404")}}),
         },
         "/api/v1/membership-plans": {"post": _secured({"requestBody": _body("MembershipPlanWrite"), "responses": {"201": _response("Plan created", {"$ref": "#/components/schemas/MembershipPlan"}), **_error_responses("400", "401", "409")}})},
         "/api/v1/members/{member_id}/memberships": {"post": _secured({"parameters": _path_id("member_id"), "requestBody": _body("MembershipAssign"), "responses": {"201": _response("Membership assigned", {"$ref": "#/components/schemas/Membership"}), **_error_responses("400", "401", "404", "409")}})},
@@ -96,9 +97,9 @@ def openapi_document() -> dict:
             "patch": _secured({"parameters": _path_id("membership_id"), "requestBody": _body("MembershipPatch"), "responses": {"200": _response("Membership updated", {"$ref": "#/components/schemas/Membership"}), **_error_responses("400", "401", "404", "409")}}),
             "delete": _secured({"parameters": _path_id("membership_id"), "responses": {"200": _response("Membership cancelled", {"$ref": "#/components/schemas/Membership"}), **_error_responses("400", "401", "404", "409")}}),
         },
-        "/api/v1/members/{member_id}/attendance/check-in": {"post": _secured({"parameters": _path_id("member_id"), "responses": {"201": _response("Checked in", {"$ref": "#/components/schemas/Attendance"}), **_error_responses("400", "401", "409")}})},
+        "/api/v1/members/{member_id}/attendance/check-in": {"post": _secured({"parameters": _path_id("member_id"), "responses": {"201": _response("Checked in", {"$ref": "#/components/schemas/Attendance"}), **_error_responses("400", "401", "404", "409")}})},
         "/api/v1/attendance/{attendance_id}/check-out": {"patch": _secured({"parameters": _path_id("attendance_id"), "responses": {"200": _response("Checked out", {"$ref": "#/components/schemas/Attendance"}), **_error_responses("400", "401", "404", "409")}})},
-        "/api/v1/members/{member_id}/attendance": {"get": _secured({"parameters": _path_id("member_id") + _pagination(attendance_filters=True), "responses": {"200": _response("Attendance history", {"$ref": "#/components/schemas/AttendancePage"}), **_error_responses("400", "401")}})},
+        "/api/v1/members/{member_id}/attendance": {"get": _secured({"parameters": _path_id("member_id") + _pagination(attendance_filters=True), "responses": {"200": _response("Attendance history", {"$ref": "#/components/schemas/AttendancePage"}), **_error_responses("400", "401", "404")}})},
         "/api/v1/attendance": {"get": _secured({"parameters": _pagination(member_filter=True, attendance_filters=True), "responses": {"200": _response("Attendance page", {"$ref": "#/components/schemas/AttendancePage"}), **_error_responses("400", "401")}})},
     }
     return {"openapi": "3.0.3", "info": {"title": "Gym Management API", "version": "1.0.0"}, "components": {"securitySchemes": {"ApiKeyAuth": {"type": "apiKey", "in": "header", "name": "X-API-Key"}}, "schemas": schemas}, "paths": paths}

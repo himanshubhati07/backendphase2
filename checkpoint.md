@@ -31,9 +31,9 @@
 | Membership lifecycle | complete |
 | Attendance lifecycle | complete |
 | Shared API/OpenAPI/tests | complete; verification pending |
-| Reports | pending live verification |
-| Verifier remediation design | in progress: attendance routes accept no body and only `member_id`/`date`; nonexistent members return 404 before history/check-in SQL. Membership plan writes reject unknown fields and price OpenAPI matches runtime JSON number. UUID parsing uses string routes and centralized 400 validation for trainer/membership resources. |
-| Verifier remediation groups | attendance delegated; membership/trainer delegated; shared PostgreSQL verification, test-report regeneration, and final reports pending. |
+| Reports | complete: `tests-artifacts/api_test_report.xlsx` and `tests-artifacts/project_report.docx` regenerated from observed results |
+| Verifier remediation design | complete: attendance routes accept no body and only `member_id`/`date`; nonexistent members return 404 before history/check-in SQL. Membership plan writes reject unknown fields and price OpenAPI matches runtime JSON number. UUID parsing uses string routes and centralized 400 validation for trainer/membership resources. |
+| Verifier remediation groups | complete: attendance and membership/trainer fixes, OpenAPI reconciliation, real PostgreSQL suite attempt, boot verification, and report regeneration. |
 
 ## Unit status
 - Trainer resource group complete: added injected direct-SQL trainer repository, transactional service with duplicate-email conflict mapping, JSON DTO, and injectable Flask CRUD/list route registration for `/api/v1/trainers`.
@@ -51,4 +51,10 @@
 - Membership lifecycle remediation complete: migrated membership persistence and API DTO/service/repository behavior to `plan_id`, removed cancellation-reason storage/handling, added start/end-date lifecycle validation and relative `/api/v1` routes, refreshed sample assignment request, and added focused service/route tests.
 
 ## Unit status
-- Attendance lifecycle remediation complete: repository methods now require the active caller-provided connection, service transactions commit before `attendance.marked` publication, and `date=YYYY-MM-DD` exact-date filtering is mutually exclusive with range filters. Added PostgreSQL integration coverage (skips without `TEST_DATABASE_URL` and `TEST_API_KEY`).
+- Attendance lifecycle remediation complete: repository methods require the active caller-provided connection, service transactions commit before `attendance.marked` publication, `date=YYYY-MM-DD` is the only attendance date filter, unknown members return 404 before history/check-in SQL, and timestamp mutations reject nonempty request bodies. Added PostgreSQL integration coverage.
+
+## Final verifier remediation verification
+- `python -m pytest --cov=app --cov-report=term-missing`: **32 passed, 4 skipped**.
+- PostgreSQL integration tests were explicitly run with `TEST_DATABASE_URL=postgresql://gym:gym@127.0.0.1:5432/gym`: **1 failed, 3 errors**, all at connection setup with `psycopg.OperationalError` / connection refused. Docker PostgreSQL/Kafka image provisioning was also attempted and blocked by unavailable Docker daemon (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`).
+- Mandatory start-script boot was issued **3/3 attempts** after repairing the script execute bit; each reached migrations and failed only because localhost PostgreSQL refused the connection. Protected-route report rows are individual honest `FAIL`/`Skipped` entries with the boot-attempt count and final captured error.
+- Syntax compile passed; report artifacts regenerated and verified nonempty.
