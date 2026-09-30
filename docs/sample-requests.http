@@ -1,0 +1,70 @@
+@baseUrl = http://localhost:8000
+@apiKey = replace-with-local-api-key
+
+GET {{baseUrl}}/health
+GET {{baseUrl}}/openapi.json
+GET {{baseUrl}}/docs
+
+POST {{baseUrl}}/api/v1/members
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"first_name":"Ada","last_name":"Lovelace","email":"ada@example.test"}
+
+GET {{baseUrl}}/api/v1/members?page=1&per_page=20
+X-API-Key: {{apiKey}}
+GET {{baseUrl}}/api/v1/members/{{memberId}}
+X-API-Key: {{apiKey}}
+PATCH {{baseUrl}}/api/v1/members/{{memberId}}
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"phone":"+15555550100"}
+DELETE {{baseUrl}}/api/v1/members/{{memberId}}
+X-API-Key: {{apiKey}}
+
+POST {{baseUrl}}/api/v1/trainers
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"first_name":"Grace","last_name":"Hopper","email":"grace@example.test"}
+GET {{baseUrl}}/api/v1/trainers
+X-API-Key: {{apiKey}}
+GET {{baseUrl}}/api/v1/trainers/{{trainerId}}
+X-API-Key: {{apiKey}}
+PATCH {{baseUrl}}/api/v1/trainers/{{trainerId}}
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"specialization":"Strength"}
+DELETE {{baseUrl}}/api/v1/trainers/{{trainerId}}
+X-API-Key: {{apiKey}}
+
+POST {{baseUrl}}/api/v1/membership-plans
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"name":"Monthly","duration_days":30,"price":49.99,"is_active":true}
+POST {{baseUrl}}/api/v1/members/{{memberId}}/memberships
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"membership_plan_id":"{{planId}}"}
+GET {{baseUrl}}/api/v1/memberships/{{membershipId}}
+X-API-Key: {{apiKey}}
+PATCH {{baseUrl}}/api/v1/memberships/{{membershipId}}
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{"end_date":"2030-02-01"}
+DELETE {{baseUrl}}/api/v1/memberships/{{membershipId}}
+X-API-Key: {{apiKey}}
+
+POST {{baseUrl}}/api/v1/members/{{memberId}}/attendance/check-in
+X-API-Key: {{apiKey}}
+PATCH {{baseUrl}}/api/v1/attendance/{{attendanceId}}/check-out
+X-API-Key: {{apiKey}}
+GET {{baseUrl}}/api/v1/members/{{memberId}}/attendance?page=1
+X-API-Key: {{apiKey}}
+GET {{baseUrl}}/api/v1/attendance?member_id={{memberId}}&date=2030-01-01
+X-API-Key: {{apiKey}}

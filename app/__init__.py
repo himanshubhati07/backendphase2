@@ -30,6 +30,7 @@ def create_app(settings: Settings | None = None) -> Flask:
     member_routes(api, MemberService(transactions, MemberRepository(), events))
     trainer_routes(api, TrainerService(transactions, TrainerRepository()))
     membership_bp = create_memberships_blueprint(MembershipService(transactions, MembershipRepository(), events))
+    membership_bp.before_request(require_api_key(settings.api_keys)(lambda: None))
     app.register_blueprint(api)
     app.register_blueprint(membership_bp, url_prefix="/api/v1")
     # Attendance blueprint is constructed around a connection-backed repository.
