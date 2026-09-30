@@ -32,6 +32,8 @@
 | Attendance lifecycle | complete |
 | Shared API/OpenAPI/tests | complete; verification pending |
 | Reports | pending live verification |
+| Verifier remediation design | in progress: attendance routes accept no body and only `member_id`/`date`; nonexistent members return 404 before history/check-in SQL. Membership plan writes reject unknown fields and price OpenAPI matches runtime JSON number. UUID parsing uses string routes and centralized 400 validation for trainer/membership resources. |
+| Verifier remediation groups | attendance delegated; membership/trainer delegated; shared PostgreSQL verification, test-report regeneration, and final reports pending. |
 
 ## Unit status
 - Trainer resource group complete: added injected direct-SQL trainer repository, transactional service with duplicate-email conflict mapping, JSON DTO, and injectable Flask CRUD/list route registration for `/api/v1/trainers`.
