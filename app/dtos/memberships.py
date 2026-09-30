@@ -8,7 +8,9 @@ from uuid import UUID
 
 
 def _json_value(value: Any) -> Any:
-    if isinstance(value, (UUID, date, datetime)):
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, (date, datetime)):
         return value.isoformat()
     if isinstance(value, Decimal):
         # Prices are represented as JSON numbers at the HTTP boundary.

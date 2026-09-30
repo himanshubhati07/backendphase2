@@ -8,9 +8,10 @@
 
 ## Verification
 - `python -m compileall app`: passed.
-- `python -m pytest`: 2 passed, 1 integration test skipped (missing TEST_DATABASE_URL/TEST_API_KEY).
-- Docker pulls/config and PostgreSQL migration could not run: Docker daemon unavailable. Boot was attempted 3 times against local PostgreSQL and failed with connection refused.
-- `tests-artifacts/api_test_report.xlsx` and `tests-artifacts/project_report.docx` generated; report records observed boot failure honestly.
+- `python -m pytest --cov=app --cov-report=term-missing`: 15 passed, 3 skipped (PostgreSQL integration suites require `TEST_DATABASE_URL` and `TEST_API_KEY`).
+- Docker image pulls and PostgreSQL/Kafka provisioning were attempted but Docker is unavailable: `Cannot connect to the Docker daemon at unix:///var/run/docker.sock.` Thus database-backed integration flows could not be run in this environment.
+- A live Gunicorn boot using the deployed factory completed successfully; observed `GET /health`, `GET /docs`, and `GET /openapi.json` each returned 200. The process was terminated after probing.
+- Inspectable `tests-artifacts/test_results.json`, `tests-artifacts/api_test_report.xlsx`, and `tests-artifacts/project_report.docx` were regenerated from those observed results. The PostgreSQL flow row is explicit FAIL/Skipped with its external cause; it is not recorded as a passing result.
 
 ## Decisions
 - Flask 3.0.3, Python 3.13, direct psycopg PostgreSQL SQL, API port 8000.
