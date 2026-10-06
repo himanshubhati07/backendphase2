@@ -1,0 +1,10 @@
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/config/KafkaConfigurationTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/config/SecurityAuthorizationTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/controller/StudentControllerTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/exception/ErrorResponseTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/kafka/StudentEventProducerTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/kafka/StudentMutationEventListenerTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/security/JwtAuthenticationFilterTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/security/JwtServiceTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/service/AuthServiceTest.java
+/app/outputs/job-f10e5cd2-4153-496f-8350-a65dcc190cf4/src/test/java/com/example/studentmanagement/service/StudentServiceTest.java

@@ -19,10 +19,13 @@ spring:
     consumer:
       group-id: ${KAFKA_CONSUMER_GROUP:student-management-audit}
       auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: com.example.studentmanagement.kafka
         spring.json.value.default.type: com.example.studentmanagement.kafka.StudentEvent
     producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 app:
   jwt:
