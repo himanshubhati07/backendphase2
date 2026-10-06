@@ -49,7 +49,7 @@ class AuthServiceTest {
 
     @Test void refreshRotatesTokenAndRejectsItsReuse() {
         RefreshToken existing = new RefreshToken("old-token", Instant.now().plusSeconds(60), user);
-        when(refreshTokenRepository.findByTokenValue("old-token")).thenReturn(Optional.of(existing));
+        when(refreshTokenRepository.findByTokenValueForUpdate("old-token")).thenReturn(Optional.of(existing));
         when(user.getUsername()).thenReturn("admin");
         when(jwtService.generateAccessToken(any(), any())).thenReturn("new-access-token");
 

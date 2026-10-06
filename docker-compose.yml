@@ -33,7 +33,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-  student-management-service:
+  app:
     build: .
     environment:
       SERVER_PORT: 8000
@@ -42,6 +42,8 @@ services:
       DB_PASSWORD: "${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in environment}"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in environment}"
+      APP_ADMIN_USERNAME: "${APP_ADMIN_USERNAME:-admin}"
+      APP_ADMIN_PASSWORD: "${APP_ADMIN_PASSWORD:?Set APP_ADMIN_PASSWORD in environment}"
     depends_on:
       mysql:
         condition: service_healthy

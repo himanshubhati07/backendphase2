@@ -24,6 +24,11 @@ public class User {
     @ElementCollection(fetch = FetchType.EAGER) @Enumerated(EnumType.STRING) private Set<Role> roles = new HashSet<>();
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true) private Set<RefreshToken> refreshTokens = new HashSet<>();
     protected User() { }
+    public User(String username, String passwordHash, Set<Role> roles) {
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.roles = new HashSet<>(roles);
+    }
     public Long getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }

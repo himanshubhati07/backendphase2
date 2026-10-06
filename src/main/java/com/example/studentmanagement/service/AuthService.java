@@ -30,7 +30,7 @@ public class AuthService {
         return issueForUsername(authentication.getName());
     }
     @Transactional public TokenResponse refresh(String value) {
-        RefreshToken token = refreshTokenRepository.findByTokenValue(value).orElseThrow(() -> new InvalidRefreshTokenException("Unknown refresh token"));
+        RefreshToken token = refreshTokenRepository.findByTokenValueForUpdate(value).orElseThrow(() -> new InvalidRefreshTokenException("Unknown refresh token"));
         if (token.isRevoked()) { throw new InvalidRefreshTokenException("Refresh token has been revoked"); }
         if (token.getExpiry().isBefore(Instant.now())) { throw new InvalidRefreshTokenException("Refresh token has expired"); }
         token.revoke();

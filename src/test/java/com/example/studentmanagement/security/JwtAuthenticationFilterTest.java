@@ -10,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
@@ -46,6 +47,20 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
         when(jwtService.isValid("bad-token")).thenReturn(false);
+
+        filter.doFilter(request, response, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test void deletedJwtSubjectDoesNotAuthenticateAndContinuesChain() throws Exception {
+        MockHttpServletRequest request = request("valid-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        when(jwtService.isValid("valid-token")).thenReturn(true);
+        when(jwtService.extractUsername("valid-token")).thenReturn("deleted-user");
+        when(userDetailsService.loadUserByUsername("deleted-user")).thenThrow(new UsernameNotFoundException("missing"));
 
         filter.doFilter(request, response, chain);
 

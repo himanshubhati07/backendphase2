@@ -1,5 +1,6 @@
 package com.example.studentmanagement.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,7 +12,7 @@ import java.time.Instant;
 @Entity
 public class RefreshToken {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
-    private String tokenValue;
+    @Column(nullable = false, unique = true) private String tokenValue;
     private Instant expiry;
     private boolean revoked;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) private User owner;
