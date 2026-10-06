@@ -10,3 +10,11 @@
 Recovery implementation: Student mutation events publish through an `AFTER_COMMIT` transactional listener to `student-events`; coverage verifies event timing and Kafka JSON producer/listener handling. Focused tests cover login, refresh reuse rejection, JWT filter/RBAC, and correlated structured errors. Compose now quotes Kafka values, checks Kafka health, waits for it, and has `.env.example`. Reports contain observed Maven, live HTTP, and OpenAPI-path results; unavailable live Kafka checks are explicitly marked failed/skipped.
 
 Decisions: one Spring Boot service on port 8000; packages `com.example.studentmanagement`; MySQL and Kafka are infra only. JWT is environment configured, roles use `ROLE_` authorities, refresh rotation is persisted. Offset is converted to `PageRequest.of(offset / limit, limit)` after requiring offset divisible by limit, avoiding incorrect rounding.
+
+## Recovery plan
+
+| Recovery group | Status | Contract |
+|---|---|---|
+| Kafka consumer | In progress | `StudentEventConsumer` uses `@KafkaListener(topics = "student-events", groupId = "${app.kafka.consumer-group}")`; it records/logs safely and is unit tested with listener metadata/handling. |
+| Auth safety and provisioning | In progress | Refresh uses a pessimistic-locking repository lookup in its transaction so exactly one concurrent caller can consume a token. Persisted admin provisioning is property-driven (`APP_ADMIN_USERNAME`/`APP_ADMIN_PASSWORD`) with an ADMIN role. Missing JWT subjects are treated as unauthenticated and continue safely. |
+| Compose/report/live verification | Pending | Root application compose service is named `app`, preserving port/dependencies. Final xlsx has leading `Service` and observed Kafka/Docker results; docs are regenerated from observations. |
