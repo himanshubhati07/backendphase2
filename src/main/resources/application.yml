@@ -1,0 +1,40 @@
+server:
+  port: ${SERVER_PORT:8000}
+spring:
+  application:
+    name: student-management-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/student_management?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:student_app}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:student-management-audit}
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: com.example.studentmanagement.kafka
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer-properties:
+      spring.json.value.default.type: com.example.studentmanagement.kafka.StudentEvent
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:480}
+    refresh-token-expiration-minutes: ${JWT_REFRESH_TOKEN_EXPIRATION_MINUTES:10080}
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /docs
+logging:
+  pattern:
+    level: "%5p [req:%X{correlationId:-none}]"
