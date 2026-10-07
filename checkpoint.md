@@ -14,3 +14,10 @@
 - [ ] STEP 10–14 verification and fixes
 - [ ] STEP 15 reports
 - [ ] STEP 16 final verification
+
+## Auth/User Unit Status
+- [x] Auth/user feature implemented: bcrypt password hashing, HS256 access-token creation/validation, parameterized user repository, bearer current-user dependency, and `/api/v1/auth/register` plus `/api/v1/auth/login` routes.
+- Assumption: the parent application imports `app.routes_auth.router` and installs the existing exception handlers/database lifecycle. No tests run per unit instruction.
+
+## Tasks feature unit
+- [x] Added owner-scoped task repository, service, and authenticated routes for create, list, retrieve, replace, complete, and delete. List filtering/pagination uses a separate matching count query; all task-ID mutations and retrievals are owner constrained.
