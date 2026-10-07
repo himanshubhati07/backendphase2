@@ -1,6 +1,7 @@
 """Seed the catalogue with a small, repeatable toddler-friendly library."""
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from stories.models import Category, Story
@@ -33,8 +34,8 @@ class Command(BaseCommand):
                     "category": categories[category_name],
                     "description": description,
                     "content": content,
-                    "age_group": Story.AGE_GROUP_TWO_TO_THREE,
-                    "language": Story.LANGUAGE_EN,
+                    "age_group": settings.SUPPORTED_STORY_AGE_GROUPS[0],
+                    "language": settings.SUPPORTED_STORY_LANGUAGES[0],
                     "duration_minutes": duration,
                     "learning_objective": "Build early language and observation skills.",
                     "is_active": True,

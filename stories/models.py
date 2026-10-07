@@ -3,9 +3,22 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
+
+
+# The values originate in settings; labels retain the established admin display
+# for the default catalogue while allowing configured values to be added.
+STORY_LANGUAGE_CHOICES = tuple(
+    (language, "English" if language == "en" else language)
+    for language in settings.SUPPORTED_STORY_LANGUAGES
+)
+STORY_AGE_GROUP_CHOICES = tuple(
+    (age_group, "2–3 years" if age_group == "2-3" else f"{age_group} years")
+    for age_group in settings.SUPPORTED_STORY_AGE_GROUPS
+)
 
 
 class Category(models.Model):
@@ -25,10 +38,8 @@ class Category(models.Model):
 class Story(models.Model):
     """An age-appropriate story in the public catalogue."""
 
-    LANGUAGE_EN = "en"
-    AGE_GROUP_TWO_TO_THREE = "2-3"
-    LANGUAGE_CHOICES = ((LANGUAGE_EN, "English"),)
-    AGE_GROUP_CHOICES = ((AGE_GROUP_TWO_TO_THREE, "2–3 years"),)
+    LANGUAGE_CHOICES = STORY_LANGUAGE_CHOICES
+    AGE_GROUP_CHOICES = STORY_AGE_GROUP_CHOICES
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)

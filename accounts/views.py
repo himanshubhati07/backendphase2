@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from config.exceptions import Conflict
+from config.openapi import JWT_SECURITY, PUBLIC_SECURITY, responses, success_envelope
 from config.responses import success_response
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -16,6 +19,16 @@ from rest_framework.views import APIView
 from accounts.exceptions import EmailAlreadyRegisteredError, InvalidCredentialsError
 from accounts.serializers import LoginSerializer, RegistrationSerializer
 from accounts.services import authenticate_user, register_user, token_data_for_user
+from accounts.serializers import UserSerializer
+
+
+class TokenDataSerializer(serializers.Serializer):
+    """Access token payload returned after a successful authentication action."""
+
+    access = serializers.CharField()
+    token_type = serializers.CharField(default="Bearer")
+    expires_in = serializers.IntegerField(min_value=0)
+    user = UserSerializer()
 
 
 class RegistrationView(APIView):
@@ -25,6 +38,13 @@ class RegistrationView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes: list[Any] = []
 
+    @extend_schema(
+        request=RegistrationSerializer,
+        responses=responses(201, success_envelope("RegistrationSuccess", TokenDataSerializer()), 400, 401, 409, 500),
+        auth=PUBLIC_SECURITY,
+        operation_id="registerAccount",
+        description="Create an account and return a JWT access token. This operation is public.",
+    )
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """Validate a registration request and delegate user creation."""
         serializer = RegistrationSerializer(data=request.data)
@@ -48,6 +68,13 @@ class LoginView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes: list[Any] = []
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses=responses(200, success_envelope("LoginSuccess", TokenDataSerializer()), 400, 401, 500),
+        auth=PUBLIC_SECURITY,
+        operation_id="loginAccount",
+        description="Validate email and password and return a JWT access token. This operation is public.",
+    )
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """Validate credentials and delegate authentication."""
         serializer = LoginSerializer(data=request.data)

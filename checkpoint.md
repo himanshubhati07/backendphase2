@@ -35,9 +35,17 @@
 - Docker verification: use the MySQL infra service, boot the application against it, build/run the Dockerfile and poll `/health`; clean all containers and images afterward.
 
 ## Current status
-- [ ] Verifier remediation implementation
-- [ ] MySQL compose + Dockerfile build/run verification
-- [ ] Regenerated artifacts with new endpoint rows
+- [x] Verifier remediation implementation
+- [ ] MySQL compose + Dockerfile build/run verification — blocked by host Docker infrastructure
+- [x] Regenerated artifacts with new endpoint rows
+
+## Final verifier remediation verification
+- Added the PyMySQL `install_as_MySQLdb()` shim in `config/__init__.py`; production-mode `manage.py check` passed with `DJANGO_SECRET_KEY` and MySQL settings, proving Django imports the configured MySQL backend without a `MySQLdb` import error.
+- Added `SUPPORTED_STORY_LANGUAGES` and `SUPPORTED_STORY_AGE_GROUPS` to Django settings; Story choices, serializer validation, and seeding consume configuration. The seed command remains idempotent.
+- Added integration coverage for authenticated favorite deletion and retrieval of story progress after completion. Full SQLite suite: **22 passed**.
+- Added endpoint-level drf-spectacular schemas for envelopes, JWT security, inputs/parameters, and error responses; `manage.py spectacular --validate` completed with zero errors/warnings.
+- SQLite live boot verification passed. Regenerated artifacts preserve the preceding 20 rows and append two real observations: successful authenticated `GET /api/v1/progress/{story_id}` and `DELETE /api/v1/stories/{story_id}/favorite`; 22 report rows are PASS and artifacts open successfully.
+- Docker was re-attempted after the driver repair: Docker client exists but no daemon is running, `dockerd` is unavailable, and the Compose plugin is absent. `docker_pull python:3.13-slim` failed with `Cannot connect to the Docker daemon at unix:///var/run/docker.sock`; `docker compose up -d db` cannot execute because Compose is unavailable. Thus MySQL compose and Dockerfile build/run cannot be honestly recorded as successful in this host; no infra containers were created and no teardown is needed.
 
 ## Engagement resource status
 - Implemented `engagement`: UUID `Favorite` and `LearningProgress` models, initial migration, serializers, service layer, authenticated API views, and app URL patterns for the `/api/v1/` engagement contract.

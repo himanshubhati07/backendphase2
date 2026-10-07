@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import Activity, Category, Story
@@ -18,12 +19,26 @@ class CategorySerializer(serializers.ModelSerializer):
 class StoryWriteSerializer(serializers.ModelSerializer):
     """Validation-only representation used for story mutations."""
 
+    # Validate against settings at request time rather than a fixed ChoiceField.
+    language = serializers.CharField(max_length=10)
+    age_group = serializers.CharField(max_length=10)
+
     class Meta:
         model = Story
         fields = (
             "title", "description", "content", "category", "age_group", "language",
             "cover_image_url", "audio_url", "duration_minutes", "learning_objective", "is_active",
         )
+
+    def validate_language(self, value: str) -> str:
+        if value not in settings.SUPPORTED_STORY_LANGUAGES:
+            raise serializers.ValidationError("Unsupported story language.")
+        return value
+
+    def validate_age_group(self, value: str) -> str:
+        if value not in settings.SUPPORTED_STORY_AGE_GROUPS:
+            raise serializers.ValidationError("Unsupported story age group.")
+        return value
 
     def validate_title(self, value: str) -> str:
         if not value.strip():

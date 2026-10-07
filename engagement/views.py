@@ -5,7 +5,12 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from config.openapi import (
+    JWT_SECURITY, LIMIT_PARAMETER, OFFSET_PARAMETER, empty_success_envelope,
+    paginated_success_envelope, responses, success_envelope,
+)
 from config.responses import success_response
+from drf_spectacular.utils import extend_schema
 
 from .models import Favorite, LearningProgress
 from .serializers import FavoriteSerializer, LearningProgressSerializer
@@ -36,6 +41,11 @@ class FavoriteDetailView(APIView):
     serializer_class = FavoriteSerializer
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        responses=responses(201, success_envelope("FavoriteCreateSuccess", FavoriteSerializer()), 401, 403, 404, 409, 500),
+        auth=JWT_SECURITY, operation_id="createFavorite",
+        description="Add the identified story to the authenticated user's favorites.",
+    )
     def post(self, request, story_id):
         favorite = create_favorite(user=request.user, story_id=story_id)
         return success_response(
@@ -44,6 +54,11 @@ class FavoriteDetailView(APIView):
             status_code=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        responses=responses(200, empty_success_envelope("FavoriteDeleteSuccess"), 401, 403, 404, 500),
+        auth=JWT_SECURITY, operation_id="deleteFavorite",
+        description="Remove the identified story from the authenticated user's favorites.",
+    )
     def delete(self, request, story_id):
         remove_favorite(user=request.user, story_id=story_id)
         return success_response(message="Story removed from favorites.")
@@ -53,6 +68,11 @@ class FavoriteCollectionView(APIView):
     serializer_class = FavoriteSerializer
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        responses=responses(200, paginated_success_envelope("FavoriteListSuccess", FavoriteSerializer()), 401, 403, 500),
+        parameters=[LIMIT_PARAMETER, OFFSET_PARAMETER], auth=JWT_SECURITY, operation_id="listFavorites",
+        description="List the authenticated user's favorites using offset pagination.",
+    )
     def get(self, request):
         queryset = Favorite.objects.filter(user=request.user).select_related("story")
         return paginated_response(
@@ -63,10 +83,17 @@ class FavoriteCollectionView(APIView):
         )
 
 
-class ProgressDetailView(APIView):
+class CompleteStoryView(APIView):
+    """Mark a story complete; this route deliberately only supports POST."""
+
     serializer_class = LearningProgressSerializer
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        responses=responses(200, success_envelope("ProgressCompleteSuccess", LearningProgressSerializer()), 401, 403, 404, 500),
+        auth=JWT_SECURITY, operation_id="completeStory",
+        description="Mark a story complete for the authenticated user. Repeated calls are idempotent.",
+    )
     def post(self, request, story_id):
         progress = mark_story_complete(user=request.user, story_id=story_id)
         return success_response(
@@ -74,6 +101,16 @@ class ProgressDetailView(APIView):
             message="Story marked complete.",
         )
 
+
+class ProgressDetailView(APIView):
+    serializer_class = LearningProgressSerializer
+    permission_classes = (IsAuthenticated,)
+
+    @extend_schema(
+        responses=responses(200, success_envelope("ProgressDetailSuccess", LearningProgressSerializer()), 401, 403, 404, 500),
+        auth=JWT_SECURITY, operation_id="retrieveStoryProgress",
+        description="Retrieve the authenticated user's progress for one story.",
+    )
     def get(self, request, story_id):
         progress = LearningProgress.objects.filter(
             user=request.user, story_id=story_id
@@ -92,6 +129,11 @@ class ProgressCollectionView(APIView):
     serializer_class = LearningProgressSerializer
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        responses=responses(200, paginated_success_envelope("ProgressListSuccess", LearningProgressSerializer()), 401, 403, 500),
+        parameters=[LIMIT_PARAMETER, OFFSET_PARAMETER], auth=JWT_SECURITY, operation_id="listProgress",
+        description="List the authenticated user's learning progress using offset pagination.",
+    )
     def get(self, request):
         queryset = LearningProgress.objects.filter(user=request.user).select_related("story")
         return paginated_response(

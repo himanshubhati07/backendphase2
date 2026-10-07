@@ -1,6 +1,7 @@
 """Focused catalogue validation and seed command tests."""
+from django.conf import settings
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from .models import Category, Story
 from .serializers import ActivityWriteSerializer, StoryWriteSerializer
 from .selectors import active_stories, search_active_stories
@@ -18,6 +19,39 @@ class StoryValidationTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("content", serializer.errors)
         self.assertIn("duration_minutes", serializer.errors)
+
+    def test_catalogue_options_accept_configured_values_and_reject_unsupported_values(self) -> None:
+        self.assertEqual(
+            tuple(value for value, _label in Story.LANGUAGE_CHOICES),
+            settings.SUPPORTED_STORY_LANGUAGES,
+        )
+        self.assertEqual(
+            tuple(value for value, _label in Story.AGE_GROUP_CHOICES),
+            settings.SUPPORTED_STORY_AGE_GROUPS,
+        )
+
+        accepted = StoryWriteSerializer(data={
+            "title": "A title", "content": "Story content", "category": self.category.pk,
+            "age_group": settings.SUPPORTED_STORY_AGE_GROUPS[0],
+            "language": settings.SUPPORTED_STORY_LANGUAGES[0], "duration_minutes": 1,
+        })
+        self.assertTrue(accepted.is_valid(), accepted.errors)
+
+        rejected = StoryWriteSerializer(data={
+            "title": "A title", "content": "Story content", "category": self.category.pk,
+            "age_group": "unsupported", "language": "unsupported", "duration_minutes": 1,
+        })
+        self.assertFalse(rejected.is_valid())
+        self.assertIn("age_group", rejected.errors)
+        self.assertIn("language", rejected.errors)
+
+    @override_settings(SUPPORTED_STORY_LANGUAGES=("es",), SUPPORTED_STORY_AGE_GROUPS=("4-5",))
+    def test_serializer_uses_current_catalogue_option_settings(self) -> None:
+        serializer = StoryWriteSerializer(data={
+            "title": "Un título", "content": "Contenido", "category": self.category.pk,
+            "age_group": "4-5", "language": "es", "duration_minutes": 1,
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_options_must_be_an_array(self) -> None:
         serializer = ActivityWriteSerializer(data={

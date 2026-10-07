@@ -86,6 +86,48 @@ def test_completion_is_idempotent_and_preserves_completion_time(client, users, c
     assert LearningProgress.objects.filter(user=user, story=story).count() == 1
 
 
+def test_delete_favorite_after_creation_uses_project_api_route(client, users, category):
+    """A user can remove a newly created favorite through the deployed URLConf."""
+    user, _ = users
+    story = make_story(category)
+    client.force_authenticate(user=user)
+
+    created = client.post(f"/api/v1/stories/{story.id}/favorite")
+    assert created.status_code == 201
+    assert Favorite.objects.filter(user=user, story=story).exists()
+
+    response = client.delete(f"/api/v1/stories/{story.id}/favorite")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Story removed from favorites.",
+        "data": None,
+    }
+    assert not Favorite.objects.filter(user=user, story=story).exists()
+
+
+def test_get_completed_progress_uses_project_api_route(client, users, category):
+    """A completed story's progress is retrievable through the deployed URLConf."""
+    user, _ = users
+    story = make_story(category)
+    client.force_authenticate(user=user)
+
+    completed = client.post(f"/api/v1/stories/{story.id}/complete")
+    assert completed.status_code == 200
+
+    response = client.get(f"/api/v1/progress/{story.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Learning progress retrieved."
+    assert body["data"]["id"] == completed.json()["data"]["id"]
+    assert body["data"]["story"] == str(story.id)
+    assert body["data"]["is_completed"] is True
+    assert body["data"]["completed_at"] is not None
+
+
 @override_settings(ROOT_URLCONF="engagement.test_urls")
 def test_progress_and_favorites_use_limit_offset_pagination(client, users, category):
     user, _ = users
