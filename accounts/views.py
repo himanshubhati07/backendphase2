@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from config.exceptions import Conflict
 from config.responses import success_response
 from rest_framework import status
-from rest_framework.exceptions import AuthenticationFailed, ValidationError
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -31,7 +32,7 @@ class RegistrationView(APIView):
         try:
             user = register_user(**serializer.validated_data)
         except EmailAlreadyRegisteredError as exc:
-            raise ValidationError({"email": [str(exc)]}, code="email_already_registered") from exc
+            raise Conflict(str(exc), code="email_already_registered") from exc
 
         return success_response(
             data=token_data_for_user(user),

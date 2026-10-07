@@ -52,8 +52,14 @@ def test_registration_rejects_duplicate_normalized_email(client: APIClient) -> N
         format="json",
     )
 
-    assert response.status_code == 400
-    assert response.json()["success"] is False
+    assert response.status_code == 409
+    body = response.json()
+    assert body["success"] is False
+    assert body["message"] == "An account already uses this email address."
+    assert body["error_code"] == "conflict"
+    assert body["details"] == {"detail": "An account already uses this email address."}
+    assert body["timestamp"]
+    assert body["request_id"]
 
 
 @pytest.mark.urls("accounts.tests.test_auth")

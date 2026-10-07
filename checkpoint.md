@@ -17,15 +17,25 @@
 - [x] STEP 8 tests (12 pytest tests)
 - [x] STEP 9 README
 - [x] STEP 10-16 checks, boot verification, and reports
+- [x] Verifier remediation: HTTP stories/activity coverage, duplicate-registration 409, `api` facade, quoted compose values, and removed report helper
 
 ## Verification
 - `DJANGO_USE_SQLITE=true python manage.py check`, migration drift check, migrations, and seed command passed.
-- `DJANGO_USE_SQLITE=true pytest`: 12 passed.
-- Live Gunicorn boot verification passed; 11 observed HTTP checks passed. Reports are in `tests-artifacts/`.
-- Docker image pulls and Dockerfile build/run verification were attempted but the host Docker daemon is unavailable (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`).
+- `DJANGO_USE_SQLITE=true pytest`: 18 passed after verifier remediation.
+- Live Gunicorn boot verification passed after a health poll; 20 individually observed HTTP checks were recorded in regenerated reports under `tests-artifacts/`.
+- Docker image pulls and Dockerfile build/run verification were re-attempted but the host Docker daemon is unavailable (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`). The host also lacks the Docker Compose plugin (`docker: 'compose' is not a docker command`), so compose startup could not be run. Dockerfile verification FAILED externally: 1 attempted environment check, last error is the daemon connection failure.
+- `docker-compose.yml` parses successfully as YAML with quoted comma/colon environment interpolation values; one-off `generate_reports.py` was deleted after artifact verification.
 - Final secret configuration check: deployment requires `DJANGO_SECRET_KEY`; SQLite test runs use an ephemeral process-only key.
 
 ## Engagement resource status
 - Implemented `engagement`: UUID `Favorite` and `LearningProgress` models, initial migration, serializers, service layer, authenticated API views, and app URL patterns for the `/api/v1/` engagement contract.
 - Added pytest coverage for authentication, ownership isolation, duplicate favorites, completion idempotency, and limit/offset pagination.
 - Pending shared integration: project settings/URL wiring and shared `config.responses` / `config.exceptions` are owned outside this resource.
+
+## Stories API test status
+- Added `stories/test_api.py` pytest HTTP integration coverage for story and activity CRUD, filtering/search/pagination, inactive-resource public visibility, validation, authentication, and not-found behavior. No application behavior was changed.
+
+## API facade status
+- Added the documented `api` facade package. Its response, exception, serializer, service, and view modules re-export canonical behavior from `config`, `accounts`, `stories`, and `engagement`; `api.urls` aggregates those existing version-relative route modules without duplicating endpoints.
+- No project URL wiring was changed, so the existing `config.urls` remains authoritative; consumers may include `api.urls` under `/api/v1/` where aggregation is desired.
+- No test command was run in this unit because the available workspace interface exposes filesystem tools only; no endpoint logic was changed.
