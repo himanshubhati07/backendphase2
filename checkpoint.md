@@ -27,6 +27,18 @@
 - `docker-compose.yml` parses successfully as YAML with quoted comma/colon environment interpolation values; one-off `generate_reports.py` was deleted after artifact verification.
 - Final secret configuration check: deployment requires `DJANGO_SECRET_KEY`; SQLite test runs use an ephemeral process-only key.
 
+## Current verifier remediation plan
+- MySQL compatibility: retain pinned `PyMySQL==1.1.1` and install its `MySQLdb` compatibility shim in `config/__init__.py`, before Django settings/backend initialization. Production database engine remains Django's MySQL backend.
+- Configured catalogue options: `SUPPORTED_STORY_LANGUAGES = ("en",)` and `SUPPORTED_STORY_AGE_GROUPS = ("2-3",)` live in Django settings; model choices and serializer validation consume those settings.
+- API contract documentation: all endpoints receive drf-spectacular operation descriptions, explicit JWT bearer security where protected, parameters, and success/error envelope response schemas. The standard success envelope is `{success, message, data}` and error envelope is `{success, message, error_code, details, timestamp, request_id}`.
+- Engagement verification: authenticated endpoint tests must cover successful favorite deletion and retrieval of an existing story's progress after completion. Live report regeneration must preserve existing rows and append real observed rows for both checks.
+- Docker verification: use the MySQL infra service, boot the application against it, build/run the Dockerfile and poll `/health`; clean all containers and images afterward.
+
+## Current status
+- [ ] Verifier remediation implementation
+- [ ] MySQL compose + Dockerfile build/run verification
+- [ ] Regenerated artifacts with new endpoint rows
+
 ## Engagement resource status
 - Implemented `engagement`: UUID `Favorite` and `LearningProgress` models, initial migration, serializers, service layer, authenticated API views, and app URL patterns for the `/api/v1/` engagement contract.
 - Added pytest coverage for authentication, ownership isolation, duplicate favorites, completion idempotency, and limit/offset pagination.
