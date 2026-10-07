@@ -12,11 +12,11 @@
 - [x] STEP 1 design and endpoint testability classification (all specified endpoints testable)
 - [x] STEP 2–8 implementation (database, schemas, auth, task API, static frontend, Docker and tests)
 - [x] STEP 9 README
-- [x] STEP 10 syntax/import check (`compileall`; OpenAPI import check passed)
-- [x] STEP 11 pytest attempted; blocked by unavailable Docker/Compose PostgreSQL (`db` hostname resolution / pool timeout)
-- [x] STEP 14 boot attempted; first of three attempts timed out while DB was unavailable; Docker daemon/Compose plugin unavailable
-- [x] STEP 15 reports (`tests-artifacts/api_test_report.xlsx`, `tests-artifacts/project_report.docx`) with observed failures
-- [x] STEP 16 delivery checks: Dockerfile and docker-compose.yml exist; Docker pull/build/run unavailable on this host
+- [x] STEP 10 syntax/import check (`compileall`; OpenAPI import check passed before remediation)
+- [ ] STEP 11 pytest: still not executed successfully. Docker daemon cannot start in this sandbox (cgroup mount permission errors); the PostgreSQL-backed suite remains pending.
+- [ ] STEP 14 boot: not successful. Docker Compose is unavailable (`unknown shorthand flag: 'd' in -d`) and the installed daemon cannot start due cgroup permissions.
+- [ ] STEP 15 reports: existing XLSX/DOCX record prior failed observations; required real-pass `test_results.json` has not been generated because no live app/database test run occurred.
+- [ ] STEP 16 Docker deployment verification: not successful. Image pull/build/run is blocked by the sandbox Docker daemon/cgroup restriction.
 
 ## Auth/User Unit Status
 - [x] Auth/user feature implemented: bcrypt password hashing, HS256 access-token creation/validation, parameterized user repository, bearer current-user dependency, and `/api/v1/auth/register` plus `/api/v1/auth/login` routes.
@@ -41,4 +41,7 @@
 
 ## Auth/config remediation unit
 - [x] `DATABASE_URL` and `JWT_SECRET` are required `Settings` inputs with no source defaults; JWT signing and verification share configurable `jwt_algorithm` (default `HS256`); auth OpenAPI documents ErrorResponse models for required error statuses.
-- [ ] Syntax command not run: this unit's environment exposes filesystem tools only and no command-execution tool.
+
+## Verification blocker (current run)
+- Docker pull failed because the original daemon was unavailable. Installing Docker Engine did not resolve it: daemon startup fails with `mount: /sys/fs/cgroup/cpu: permission denied` and Docker remains unreachable. The installed CLI also has no Compose plugin; `docker compose up -d db` reports `unknown shorthand flag: 'd' in -d`.
+- Consequently, no PASS rows or `test_results.json` were fabricated. A functional Docker-capable runner is still required to run the isolated PostgreSQL pytest suite, boot the service, capture real HTTP report rows (including `/docs` and `/openapi.json`), generate reports, and run final image verification.
