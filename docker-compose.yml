@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:17.2
+    environment:
+      POSTGRES_DB: task_manager
+      POSTGRES_USER: task_user
+      POSTGRES_PASSWORD: task_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U task_user -d task_manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://task_user:task_password@db:5432/task_manager
+      JWT_SECRET: development-only-change-in-production
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -9,8 +9,8 @@
 
 ## Status
 - [x] STEP 1 design and endpoint testability classification (all specified endpoints testable)
-- [ ] STEP 2–8 implementation
-- [ ] STEP 9 README
+- [x] STEP 2–8 implementation (database, schemas, auth, task API, static frontend, Docker and tests)
+- [x] STEP 9 README
 - [ ] STEP 10–14 verification and fixes
 - [ ] STEP 15 reports
 - [ ] STEP 16 final verification
@@ -21,3 +21,9 @@
 
 ## Tasks feature unit
 - [x] Added owner-scoped task repository, service, and authenticated routes for create, list, retrieve, replace, complete, and delete. List filtering/pagination uses a separate matching count query; all task-ID mutations and retrievals are owner constrained.
+
+## Integration test unit
+- [x] Added PostgreSQL-backed pytest fixtures plus auth and task route integration tests. Fixtures source `TEST_DATABASE_URL`, initialize the application schema, truncate tables for each test, and exercise real FastAPI/JWT dependencies. Tests were not executed because `app.main:app` is designated to be added by another unit.
+
+## Frontend unit
+- [x] Added same-origin static SPA assets with accessible registration/login, in-memory bearer JWT handling, protected task dashboard/detail/create/edit UI, task filtering, offset pagination, completion, deletion, and responsive styles.

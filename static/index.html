@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2457d6">
+  <title>Taskflow</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#/dashboard" aria-label="Taskflow home">Taskflow</a>
+    <nav aria-label="Primary navigation">
+      <a data-auth-only href="#/dashboard">Dashboard</a>
+      <a data-auth-only href="#/task/new">New task</a>
+      <button data-auth-only id="logout-button" class="button button-quiet" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <section id="message-region" class="message-region" aria-live="polite" aria-atomic="true"></section>
+
+    <section id="auth-view" class="view auth-layout" aria-labelledby="auth-heading">
+      <div class="auth-intro">
+        <p class="eyebrow">Organize with confidence</p>
+        <h1 id="auth-heading">A calmer way to manage tasks.</h1>
+        <p>Plan what matters, see progress at a glance, and keep your work moving.</p>
+      </div>
+      <div class="panel auth-panel">
+        <div id="login-panel">
+          <h2>Welcome back</h2><p class="muted">Log in to see your tasks.</p>
+          <form id="login-form" novalidate>
+            <label for="login-email">Email</label>
+            <input id="login-email" name="email" type="email" autocomplete="email" required>
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" minlength="8" required>
+            <button class="button button-primary" type="submit">Log in</button>
+          </form>
+          <p class="form-switch">New here? <a href="#/register">Create an account</a></p>
+        </div>
+        <div id="register-panel" hidden>
+          <h2>Create your account</h2><p class="muted">Use at least 8 characters for your password.</p>
+          <form id="register-form" novalidate>
+            <label for="register-email">Email</label>
+            <input id="register-email" name="email" type="email" autocomplete="email" required>
+            <label for="register-password">Password</label>
+            <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <label for="register-password-confirm">Confirm password</label>
+            <input id="register-password-confirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" required>
+            <button class="button button-primary" type="submit">Create account</button>
+          </form>
+          <p class="form-switch">Already have an account? <a href="#/login">Log in</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboard-view" class="view" hidden aria-labelledby="dashboard-heading">
+      <div class="page-heading"><div><p class="eyebrow">Your workspace</p><h1 id="dashboard-heading">Tasks</h1></div><a class="button button-primary" href="#/task/new">Create task</a></div>
+      <section class="stats" aria-label="Task statistics">
+        <article><span id="stat-total">0</span><small>Total shown</small></article>
+        <article><span id="stat-pending">0</span><small>Pending</small></article>
+        <article><span id="stat-progress">0</span><small>In progress</small></article>
+        <article><span id="stat-completed">0</span><small>Completed</small></article>
+      </section>
+      <section class="panel task-tools" aria-label="Filter tasks">
+        <form id="filter-form">
+          <div><label for="search">Search tasks</label><input id="search" name="search" type="search" placeholder="Search title or description"></div>
+          <div><label for="filter-status">Status</label><select id="filter-status" name="status"><option value="">All statuses</option><option>Pending</option><option>In Progress</option><option>Completed</option></select></div>
+          <div><label for="filter-priority">Priority</label><select id="filter-priority" name="priority"><option value="">All priorities</option><option>Low</option><option>Medium</option><option>High</option></select></div>
+          <button class="button button-secondary" type="submit">Apply filters</button><button id="clear-filters" class="button button-quiet" type="button">Clear</button>
+        </form>
+      </section>
+      <section aria-labelledby="task-list-heading"><div class="section-title"><h2 id="task-list-heading">Task list</h2><span id="result-summary" class="muted"></span></div><div id="loading-region" class="loading" hidden role="status">Loading tasks…</div><div id="empty-region" class="empty-state" hidden><h3>No tasks found</h3><p>Try changing your filters or create a new task.</p><a class="button button-primary" href="#/task/new">Create task</a></div><div id="task-list" class="task-list"></div><nav id="pagination" class="pagination" aria-label="Task pages" hidden></nav></section>
+    </section>
+
+    <section id="task-view" class="view narrow" hidden aria-labelledby="task-heading"><a class="back-link" href="#/dashboard">← Back to tasks</a><div id="task-content"></div></section>
+    <section id="task-form-view" class="view narrow" hidden aria-labelledby="task-form-heading"><a class="back-link" href="#/dashboard">← Back to tasks</a><div class="panel"><h1 id="task-form-heading">Task</h1><form id="task-form" novalidate><input id="task-id" type="hidden"><label for="task-title">Title</label><input id="task-title" name="title" maxlength="255" required><label for="task-description">Description</label><textarea id="task-description" name="description" rows="5" required></textarea><div class="form-grid"><div><label for="task-priority">Priority</label><select id="task-priority" name="priority" required><option>Low</option><option selected>Medium</option><option>High</option></select></div><div><label for="task-status">Status</label><select id="task-status" name="status" required><option selected>Pending</option><option>In Progress</option><option>Completed</option></select></div><div><label for="task-due-date">Due date</label><input id="task-due-date" name="due_date" type="date" required></div></div><div class="form-actions"><button class="button button-primary" type="submit">Save task</button><a class="button button-quiet" href="#/dashboard">Cancel</a></div></form></div></section>
+  </main>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
