@@ -10,8 +10,19 @@
 ## Status
 - [x] STEP 1 design
 - [x] STEP 2 scaffold (Django startproject/startapp)
-- [ ] STEP 3-6 application and migrations
-- [ ] STEP 7 infrastructure
-- [ ] STEP 8 tests
-- [ ] STEP 9 README
-- [ ] STEP 10-16 verification and reports
+- [x] STEP 3-6 application, migrations, and idempotent seed command
+- [x] STEP 7 infrastructure (Dockerfile and compose existence verified)
+- [x] STEP 8 tests (12 pytest tests)
+- [x] STEP 9 README
+- [x] STEP 10-16 checks, boot verification, and reports
+
+## Verification
+- `DJANGO_USE_SQLITE=true python manage.py check`, migration drift check, migrations, and seed command passed.
+- `DJANGO_USE_SQLITE=true pytest`: 12 passed.
+- Live Gunicorn boot verification passed; 11 observed HTTP checks passed. Reports are in `tests-artifacts/`.
+- Docker image pulls and Dockerfile build/run verification were attempted but the host Docker daemon is unavailable (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`).
+
+## Engagement resource status
+- Implemented `engagement`: UUID `Favorite` and `LearningProgress` models, initial migration, serializers, service layer, authenticated API views, and app URL patterns for the `/api/v1/` engagement contract.
+- Added pytest coverage for authentication, ownership isolation, duplicate favorites, completion idempotency, and limit/offset pagination.
+- Pending shared integration: project settings/URL wiring and shared `config.responses` / `config.exceptions` are owned outside this resource.
