@@ -21,6 +21,7 @@
 - `DJANGO_USE_SQLITE=true pytest`: 12 passed.
 - Live Gunicorn boot verification passed; 11 observed HTTP checks passed. Reports are in `tests-artifacts/`.
 - Docker image pulls and Dockerfile build/run verification were attempted but the host Docker daemon is unavailable (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`).
+- Final secret configuration check: deployment requires `DJANGO_SECRET_KEY`; SQLite test runs use an ephemeral process-only key.
 
 ## Engagement resource status
 - Implemented `engagement`: UUID `Favorite` and `LearningProgress` models, initial migration, serializers, service layer, authenticated API views, and app URL patterns for the `/api/v1/` engagement contract.

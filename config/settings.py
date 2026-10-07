@@ -13,7 +13,13 @@ def env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-development-key-change-me")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if env_bool("DJANGO_USE_SQLITE"):
+        # An ephemeral key supports isolated tests only; deployments must supply one.
+        SECRET_KEY = os.urandom(64).hex()
+    else:
+        raise RuntimeError("DJANGO_SECRET_KEY must be configured outside isolated SQLite tests.")
 DEBUG = env_bool("DJANGO_DEBUG")
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
