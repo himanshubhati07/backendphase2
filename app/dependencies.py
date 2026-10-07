@@ -10,7 +10,7 @@ from psycopg import Connection
 
 from app.database import get_connection
 from app.exceptions import AuthenticationError
-from app.repositories_users import find_by_id
+from app.repositories import UserRepository
 from app.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -31,7 +31,7 @@ def get_current_user(
         raise AuthenticationError("Authentication credentials are required.")
 
     claims = decode_access_token(credentials.credentials)
-    user = find_by_id(connection, claims.user_id)
+    user = UserRepository(connection).find_by_id(claims.user_id)
     if user is None:
         raise AuthenticationError("Invalid or expired authentication token.")
     return CurrentUser(id=user.id, email=user.email)

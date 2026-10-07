@@ -17,6 +17,8 @@
 - [ ] STEP 14 boot: not successful. Docker Compose is unavailable (`unknown shorthand flag: 'd' in -d`) and the installed daemon cannot start due cgroup permissions.
 - [ ] STEP 15 reports: existing XLSX/DOCX record prior failed observations; required real-pass `test_results.json` has not been generated because no live app/database test run occurred.
 - [ ] STEP 16 Docker deployment verification: not successful. Image pull/build/run is blocked by the sandbox Docker daemon/cgroup restriction.
+- [x] Verifier remediation: `app/repositories.py` now provides and is actively used through `UserRepository` and `TaskRepository`; legacy function modules are compatibility wrappers.
+- [ ] Verifier remediation: rerun PostgreSQL pytest, live HTTP report generation, and Compose deployment verification on the currently available Docker runner.
 
 ## Auth/User Unit Status
 - [x] Auth/user feature implemented: bcrypt password hashing, HS256 access-token creation/validation, parameterized user repository, bearer current-user dependency, and `/api/v1/auth/register` plus `/api/v1/auth/login` routes.

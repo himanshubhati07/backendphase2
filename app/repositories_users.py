@@ -1,59 +1,26 @@
-"""Persistence operations for users."""
-from __future__ import annotations
+"""Backward-compatible function wrappers for :mod:`app.repositories` users.
 
-from dataclasses import dataclass
-from datetime import datetime
+New application code should depend on ``UserRepository`` directly.
+"""
+from __future__ import annotations
 
 from psycopg import Connection
 
+from app.repositories import User, UserRepository
 
-@dataclass(frozen=True, slots=True)
-class User:
-    id: int
-    email: str
-    password_hash: str
-    created_at: datetime
-
-
-def _to_user(row: tuple[object, ...] | None) -> User | None:
-    if row is None:
-        return None
-    user_id, email, password_hash, created_at = row
-    return User(id=int(user_id), email=str(email), password_hash=str(password_hash), created_at=created_at)  # type: ignore[arg-type]
+__all__ = ["User", "UserRepository", "create_user", "find_by_email", "find_by_id"]
 
 
 def find_by_email(connection: Connection, email: str) -> User | None:
-    """Find one user by their normalized email address."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT id, email, password_hash, created_at FROM users WHERE email = %s",
-            (email,),
-        )
-        return _to_user(cursor.fetchone())
+    """Compatibility wrapper for ``UserRepository.find_by_email``."""
+    return UserRepository(connection).find_by_email(email)
 
 
 def find_by_id(connection: Connection, user_id: int) -> User | None:
-    """Find one user by primary key."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT id, email, password_hash, created_at FROM users WHERE id = %s",
-            (user_id,),
-        )
-        return _to_user(cursor.fetchone())
+    """Compatibility wrapper for ``UserRepository.find_by_id``."""
+    return UserRepository(connection).find_by_id(user_id)
 
 
 def create_user(connection: Connection, email: str, password_hash: str) -> User:
-    """Insert a user and return its database-generated fields."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO users (email, password_hash)
-            VALUES (%s, %s)
-            RETURNING id, email, password_hash, created_at
-            """,
-            (email, password_hash),
-        )
-        user = _to_user(cursor.fetchone())
-    if user is None:  # Defensive: INSERT ... RETURNING must return a row.
-        raise RuntimeError("User insert did not return a user")
-    return user
+    """Compatibility wrapper for ``UserRepository.create_user``."""
+    return UserRepository(connection).create_user(email, password_hash)

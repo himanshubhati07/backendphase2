@@ -6,7 +6,7 @@ from psycopg.errors import UniqueViolation
 
 from app.config import Settings, get_settings
 from app.exceptions import AuthenticationError, ConflictError
-from app.repositories_users import create_user, find_by_email
+from app.repositories import UserRepository
 from app.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.security import create_access_token, hash_password, verify_password
 
@@ -21,15 +21,16 @@ class AuthService:
 
     def __init__(self, connection: Connection, settings: Settings | None = None) -> None:
         self.connection = connection
+        self.repository = UserRepository(connection)
         self.settings = settings or get_settings()
 
     def register(self, request: RegisterRequest) -> UserResponse:
         email = normalize_email(str(request.email))
-        if find_by_email(self.connection, email) is not None:
+        if self.repository.find_by_email(email) is not None:
             raise ConflictError("An account with this email already exists.")
 
         try:
-            user = create_user(self.connection, email, hash_password(request.password))
+            user = self.repository.create_user(email, hash_password(request.password))
         except UniqueViolation:
             # Clear PostgreSQL's failed transaction state before the connection
             # dependency attempts its normal final commit.
@@ -39,7 +40,7 @@ class AuthService:
 
     def login(self, request: LoginRequest) -> TokenResponse:
         email = normalize_email(str(request.email))
-        user = find_by_email(self.connection, email)
+        user = self.repository.find_by_email(email)
         if user is None or not verify_password(request.password, user.password_hash):
             raise AuthenticationError("Invalid email or password.")
 
