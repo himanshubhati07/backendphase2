@@ -6,6 +6,7 @@
 - Entities: `users(id, email normalized unique, password_hash, created_at)` owns `tasks(id, user_id, title, description, priority, due_date, status, created_at, updated_at)`.
 - Resource groups: Auth owns users/auth endpoints/security/dependency contracts; Tasks owns task schemas/service/repository/routes. Shared contract: `CurrentUser(id:int,email:str)`, repositories receive psycopg connections, enums exact values in specification.
 - Port: 8000. Frontend is static assets served by FastAPI. Docker Compose services: `app`, `db` (`postgres:17.2`).
+- Remediation design: all deployment secrets/connection strings are required environment variables; `.env.example` documents safe values. Compose provisions a separate `task_manager_test` database, and tests require `TEST_DATABASE_URL` distinct from `DATABASE_URL`. API error documentation uses the existing `ErrorResponse` envelope for 401/404/409/422/500. JWT encode/decode use `Settings.jwt_algorithm`.
 
 ## Status
 - [x] STEP 1 design and endpoint testability classification (all specified endpoints testable)
