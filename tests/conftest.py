@@ -9,10 +9,10 @@ from fastapi.testclient import TestClient
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql://task_user:task_password@db:5432/task_manager_test",
+    "postgresql://task_user:task_password@db:5432/task_manager",
 )
-# The application settings intentionally use DATABASE_URL; keep the test-only
-# connection string as the single source of truth for both the app and checks.
+# The fixture owns isolation by truncating application tables before and after
+# every test while using the Compose PostgreSQL service.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 

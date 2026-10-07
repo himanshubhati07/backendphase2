@@ -11,9 +11,11 @@
 - [x] STEP 1 design and endpoint testability classification (all specified endpoints testable)
 - [x] STEP 2–8 implementation (database, schemas, auth, task API, static frontend, Docker and tests)
 - [x] STEP 9 README
-- [ ] STEP 10–14 verification and fixes
-- [ ] STEP 15 reports
-- [ ] STEP 16 final verification
+- [x] STEP 10 syntax/import check (`compileall`; OpenAPI import check passed)
+- [x] STEP 11 pytest attempted; blocked by unavailable Docker/Compose PostgreSQL (`db` hostname resolution / pool timeout)
+- [x] STEP 14 boot attempted; first of three attempts timed out while DB was unavailable; Docker daemon/Compose plugin unavailable
+- [x] STEP 15 reports (`tests-artifacts/api_test_report.xlsx`, `tests-artifacts/project_report.docx`) with observed failures
+- [x] STEP 16 delivery checks: Dockerfile and docker-compose.yml exist; Docker pull/build/run unavailable on this host
 
 ## Auth/User Unit Status
 - [x] Auth/user feature implemented: bcrypt password hashing, HS256 access-token creation/validation, parameterized user repository, bearer current-user dependency, and `/api/v1/auth/register` plus `/api/v1/auth/login` routes.
