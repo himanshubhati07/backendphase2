@@ -6,6 +6,8 @@
 - APIs are rooted at `/api/v1`; UUIDs are canonical identifiers. Offset pagination uses DRF `LimitOffsetPagination` (`limit`, `offset`, default 20).
 - Shared contracts: `Story` has UUID `id`, category FK, language constrained to `en`, age group constrained to `2-3`; all story mutation requires JWT. `Favorite` and `LearningProgress` refer to `accounts.User` and `stories.Story` and are unique by `(user, story)`.
 - Response contract: success `{success,message,data}`; errors additionally include `error_code`, `details`, `timestamp`, and `request_id`.
+- Remediation: retain app ownership but add a documented `api` facade package containing response, exception, serializer, service, view, and URL modules. It re-exports the established centralized behavior and routes, avoiding duplicate endpoint implementations. Add HTTP API coverage for the complete stories/activity endpoint matrix; duplicate registration raises centralized `Conflict` (409).
+- Compose environment values containing commas/colons must be quoted; one-off report scripts are deleted after artifacts are generated.
 
 ## Status
 - [x] STEP 1 design
