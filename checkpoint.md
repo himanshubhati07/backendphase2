@@ -9,7 +9,7 @@
 
 ## Status
 - [x] STEP 1 design
-- [ ] STEP 2 scaffold
+- [x] STEP 2 scaffold (Django startproject/startapp)
 - [ ] STEP 3-6 application and migrations
 - [ ] STEP 7 infrastructure
 - [ ] STEP 8 tests
