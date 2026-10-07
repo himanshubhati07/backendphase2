@@ -7,8 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Immutable runtime configuration."""
 
-    database_url: str = "postgresql://task_user:task_password@db:5432/task_manager"
-    jwt_secret: str = "change-this-development-secret-before-production"
+    database_url: str
+    jwt_secret: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     api_v1_prefix: str = "/api/v1"

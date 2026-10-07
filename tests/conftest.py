@@ -6,13 +6,36 @@ import os
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from psycopg.conninfo import conninfo_to_dict
 
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql://task_user:task_password@db:5432/task_manager",
-)
-# The fixture owns isolation by truncating application tables before and after
-# every test while using the Compose PostgreSQL service.
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+
+
+def _database_name(url: str, variable_name: str) -> str:
+    """Read the target database name while rejecting malformed test settings."""
+    try:
+        database_name = conninfo_to_dict(url).get("dbname")
+    except Exception as error:
+        raise RuntimeError(f"{variable_name} must be a valid PostgreSQL connection URL") from error
+    if not database_name:
+        raise RuntimeError(f"{variable_name} must include a PostgreSQL database name")
+    return database_name
+
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL must be set when running integration tests")
+if not TEST_DATABASE_URL:
+    raise RuntimeError(
+        "TEST_DATABASE_URL must be set when running integration tests; tests never default to the app database"
+    )
+if TEST_DATABASE_URL == DATABASE_URL:
+    raise RuntimeError("TEST_DATABASE_URL must differ from DATABASE_URL before tests can truncate tables")
+if _database_name(TEST_DATABASE_URL, "TEST_DATABASE_URL") == _database_name(DATABASE_URL, "DATABASE_URL"):
+    raise RuntimeError("TEST_DATABASE_URL must target a database distinct from DATABASE_URL")
+
+# Configure the application pool for the validated dedicated test database.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 

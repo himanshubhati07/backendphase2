@@ -46,7 +46,7 @@ def create_access_token(user_id: int, email: str, settings: Settings | None = No
         "iat": now,
         "exp": expires_at,
     }
-    return jwt.encode(payload, runtime_settings.jwt_secret, algorithm="HS256")
+    return jwt.encode(payload, runtime_settings.jwt_secret, algorithm=runtime_settings.jwt_algorithm)
 
 
 def decode_access_token(token: str, settings: Settings | None = None) -> TokenClaims:
@@ -60,7 +60,7 @@ def decode_access_token(token: str, settings: Settings | None = None) -> TokenCl
         payload: dict[str, Any] = jwt.decode(
             token,
             runtime_settings.jwt_secret,
-            algorithms=["HS256"],
+            algorithms=[runtime_settings.jwt_algorithm],
             options={"require": ["sub", "email", "iat", "exp"]},
         )
         subject = payload["sub"]

@@ -30,3 +30,15 @@
 
 ## Frontend unit
 - [x] Added same-origin static SPA assets with accessible registration/login, in-memory bearer JWT handling, protected task dashboard/detail/create/edit UI, task filtering, offset pagination, completion, deletion, and responsive styles.
+
+## PostgreSQL test/deployment configuration remediation
+- [x] Made Compose database and application runtime settings environment-required; added documented nonproduction `.env.example` values.
+- [x] Mounted PostgreSQL initialization SQL to create the dedicated `task_manager_test` database alongside `task_manager`.
+- [x] Updated integration fixtures to require and validate a distinct `TEST_DATABASE_URL` before configuring or truncating the test database.
+
+## Tasks OpenAPI documentation remediation
+- [x] Documented `ErrorResponse` for protected task-route 401s, task-ID 404s, validation 422s, and 500s through FastAPI `responses` metadata without changing task endpoint behavior or success models.
+
+## Auth/config remediation unit
+- [x] `DATABASE_URL` and `JWT_SECRET` are required `Settings` inputs with no source defaults; JWT signing and verification share configurable `jwt_algorithm` (default `HS256`); auth OpenAPI documents ErrorResponse models for required error statuses.
+- [ ] Syntax command not run: this unit's environment exposes filesystem tools only and no command-execution tool.
