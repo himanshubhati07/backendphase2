@@ -57,9 +57,76 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 
 - Group A "auth-security": User entity + UserRepository + AuthService + AuthController + DTOs (LoginRequest,
   RegisterRequest, AuthResponse) + JwtService + JwtAuthenticationFilter + JwtAuthenticationEntryPoint +
-  JwtAccessDeniedHandler + SecurityConfig. Status: DISPATCHED.
+  JwtAccessDeniedHandler + SecurityConfig. Status: **DONE**.
+  - `com.ems.entity.User` — JPA entity implementing `UserDetails` directly (no RBAC; single implicit
+    `ROLE_USER` authority), mapped to the existing `users` table (`id`, `email`, `password_hash`, `created_at`).
+  - `com.ems.repository.UserRepository` — `findByEmail`, `existsByEmail`.
+  - `com.ems.dto.RegisterRequest` / `LoginRequest` — validated records (`@NotBlank`, `@Email`, `@Size`).
+  - `com.ems.dto.AuthResponse` — record `(accessToken, tokenType, expiresInSeconds)` with
+    `AuthResponse.of(...)` factory. **[orchestrator correction: subagent's original version added an extra
+    `email` field not in the spec's exact `{accessToken, tokenType, expiresInSeconds}` shape — removed.]**
+  - `com.ems.security.JwtService` — HS256 via jjwt 0.12.6 (`Jwts.builder()`/`Jwts.parser()` API), subject =
+    email, signing key from `app.jwt.secret`, expiry from `app.jwt.expiry-minutes` (30 min, fixed).
+  - `com.ems.security.JwtAuthenticationFilter` — reads `Authorization: Bearer <token>`, validates via
+    `JwtService` + `UserRepository`, populates `SecurityContextHolder`; swallows invalid/expired tokens
+    (leaves request unauthenticated) rather than throwing, so the downstream entry point handles the 401.
+  - `com.ems.security.JwtAuthenticationEntryPoint` — 401 JSON via `ApiResponse.error(...)` + injected
+    Jackson `ObjectMapper`, message `"Invalid credentials or token"` (matches `GlobalExceptionHandler`'s wording).
+  - `com.ems.security.JwtAccessDeniedHandler` — 403 JSON via `ApiResponse.error("Access denied")`.
+  - `com.ems.config.SecurityConfig` — stateless `SecurityFilterChain`: CSRF disabled, default CORS,
+    permit-list exactly as specified in Fixed Contracts (`/api/v1/auth/**`, swagger/api-docs/docs, `/ws/**`,
+    `/health`, `/actuator/health`), `anyRequest().authenticated()`, custom entry point/access-denied handler
+    wired in, `JwtAuthenticationFilter` added before `UsernamePasswordAuthenticationFilter`. Also exposes the
+    single `PasswordEncoder` bean (`BCryptPasswordEncoder`) used by `AuthService`. No `AuthenticationManager`/
+    `DaoAuthenticationProvider` needed — `AuthService` checks credentials directly via
+    `PasswordEncoder.matches(...)`.
+  - `com.ems.service.AuthService` — `register(...)` (throws `DuplicateResourceException` on existing email),
+    `login(...)` (throws `BadCredentialsException` on missing user or password mismatch); both return
+    `AuthResponse` with a freshly-issued token.
+  - `com.ems.controller.AuthController` — `POST /api/v1/auth/register` (201), `POST /api/v1/auth/login` (200),
+    both wrapped in `ApiResponse<AuthResponse>`, Swagger-annotated.
+  - Employee endpoints need zero additional wiring — already covered by `anyRequest().authenticated()`.
+  - `JWT_SECRET` env var / `application.yml` default secret is long enough (>32 bytes UTF-8) for HS256, but
+    **[orchestrator hardening]** `JwtService` now always derives its signing key via SHA-256 digest of the
+    configured secret rather than using the raw UTF-8 bytes directly, so a shorter custom `JWT_SECRET` can
+    never throw `WeakKeyException` at startup.
+  - **[orchestrator correction]** `User.createdAt` changed from `LocalDateTime` to `Instant` to match the
+    spec's entity field type exactly; `equals`/`hashCode` (id-based) added, matching the code-quality rule.
+  - Not yet compiled (no Docker/gradle daemon available to this unit) — flagging for the build-check step.
 - Group B "employee": Employee entity + EmployeeRepository + EmployeeService + EmployeeController + DTOs
-  (EmployeeRequest, EmployeeResponse). Status: DISPATCHED.
+  (EmployeeRequest, EmployeeResponse). Status: DONE, then **orchestrator-corrected** to match the functional
+  spec's exact contract (the subagent's first pass deviated on several points — documented below).
+  - `com.ems.entity.Employee` — JPA entity mapped to `employees` table, `@PrePersist`/`@PreUpdate` timestamps.
+    **[orchestrator correction]** `status` changed from a hand-invented `EmployeeStatus` enum
+    (`ACTIVE`/`ON_LEAVE`/`TERMINATED`, now deleted) back to a plain `String` per the spec's explicit
+    `status (String, required)` field type; `createdAt`/`updatedAt` changed from `LocalDateTime` to `Instant`
+    per spec; added `equals`/`hashCode` (id-based).
+  - `com.ems.repository.EmployeeRepository`: `existsByEmail`, `existsByEmailAndIdNot`, and a single JPQL
+    `search(name, email, department, pageable)` — **[orchestrator correction]** replaced the subagent's
+    single free-text `q` param (plus separate `findByDepartmentIgnoreCase`/`findByStatus` list-filter methods,
+    now removed) with the three independently-optional, case-insensitive `name`/`email`/`department` params
+    the spec's `GET /api/v1/employees/search` explicitly requires.
+  - `com.ems.dto.EmployeeRequest` — **[orchestrator correction]** `status` changed from optional enum to
+    `@NotBlank String` (spec: "all required except phone"); dropped `@PastOrPresent` on `joiningDate` (not a
+    spec requirement and would wrongly reject a legitimate future start date).
+  - `com.ems.dto.EmployeeResponse` — **[orchestrator correction]** renamed factory method `from(Employee)` to
+    `fromEntity(Employee)` to match the spec's explicit naming; converted to a `record`; `status`/timestamps
+    updated to `String`/`Instant` to match the entity.
+  - `com.ems.service.EmployeeService`: `create` (409 via `DuplicateResourceException`), `getById`/`update`/
+    `delete` (404 via `ResourceNotFoundException`), `list(page, limit)` (plain offset pagination, no filters —
+    matches spec exactly), `search(name, email, department, page, limit)`.
+  - `com.ems.controller.EmployeeController` at `/api/v1/employees`, all wrapped in `ApiResponse`, list/search
+    wrapped additionally in `PageResponse`:
+    - `POST /api/v1/employees` → 201
+    - `GET /api/v1/employees/{id}`
+    - `GET /api/v1/employees?page=&limit=`
+    - `GET /api/v1/employees/search?name=&email=&department=&page=&limit=`
+    - `PUT /api/v1/employees/{id}`
+    - `DELETE /api/v1/employees/{id}` → **[orchestrator correction]** now returns 204 No Content with no body
+      (the subagent's version wrongly returned 200 with an `ApiResponse` body, violating the spec's explicit
+      "returns 204 No Content on success").
+  - No changes made to other shared files (SecurityConfig untouched — Auth group owns it; employee routes rely
+    on `anyRequest().authenticated()` per the fixed contract).
 
 ## Remaining shared-infra steps (after both groups land)
 
