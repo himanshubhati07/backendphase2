@@ -131,18 +131,45 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 ## Remaining shared-infra steps (after both groups land)
 
 - [x] Dockerfile, docker-compose.yml, Makefile, .github/workflows/ci.yml
-- [ ] Gradle wrapper (gradlew/gradlew.bat/gradle-wrapper.jar) — generate via dockerized gradle once daemon available
+- [x] Gradle wrapper (gradlew/gradlew.bat/gradle-wrapper.jar) — generated via a locally-downloaded Gradle
+      8.11.1 binary distribution (`gradle wrapper --gradle-version 8.11.1`), since the Docker daemon was
+      (and remained, see Notes) unavailable in this sandbox.
 - [x] tests/ curl scripts (common.sh, run_all.sh, 10 numbered example scripts)
 - [x] README.md
-- [ ] Build check / compile fix loop
-- [ ] Boot verification (docker_exec or docker compose) + curl-based endpoint report
+- [x] Build check / compile fix loop — `./gradlew compileJava` / `bootJar` succeed. Fixed 2 real bugs found
+      only by actually building+booting (see below); both recorded via `record_fix`.
+- [x] Boot verification — app boots natively (Java 21.0.12.1 + Gradle 8.11.1 are present on the host) against
+      a **natively-installed PostgreSQL 17.11** (via `apt-get install postgresql-17`, since Docker is
+      unavailable here — the deliverable `docker-compose.yml` still correctly pins `postgres:17.2` exactly,
+      this native instance is only a local stand-in for running verification). `tests/run_all.sh`: **19/19
+      PASS** (register, duplicate register 409, login, bad-login 401, no-token 401, bad-token 401, employee
+      CRUD, duplicate-employee 409, validation 400, 404s, pagination, search-by-department, search-by-name,
+      delete 204, deleted-get 404, delete-nonexistent 404). `/health`->200, `/docs`->302 (redirects to
+      swagger-ui/index.html, normal), `/api-docs`->200.
 - [ ] xlsx test report + docx summary under tests-artifacts/
 - [ ] Final Dockerfile build-and-run verification
 - [ ] Final summary
 
+## Bugs found & fixed during build/boot verification
+1. `org.flywaydb:flyway-database-postgresql` (no version, then pinned to 9.22.3) failed to resolve — that
+   module only exists from Flyway 10.0.0 onward, but Spring Boot 3.2.10 manages Flyway at 9.22.3. Removed the
+   dependency entirely; Flyway 9.x bundles PostgreSQL support directly in `flyway-core`.
+2. `GET /api/v1/employees/search` 500'd with `function lower(bytea) does not exist` whenever an optional
+   filter (name/email/department) was omitted, because PostgreSQL's JDBC driver can't infer a type for a bind
+   parameter used only in a `:param is null` check. Fixed by casting every optional parameter to
+   `cast(:param as string)` everywhere it appears in the JPQL, in `EmployeeRepository.search`.
+3. Added `EmsUserDetailsService` (backed by `UserRepository`) so Spring Boot stops auto-generating and
+   logging a throwaway default-user password at every startup (cosmetic/log-hygiene fix, not a functional bug).
+
 ## Notes
-- Docker daemon was unavailable at job start and remained unavailable through several retries
-  (`Cannot connect to the Docker daemon at unix:///var/run/docream.sock`) — this blocks gradle-wrapper
-  generation, the whole build/compile/boot-verification pipeline, and the final Dockerfile
-  build-and-run verification. Keep retrying `docker_pull`/`docker_exec` before giving up on any of those
-  steps; do not silently skip them if docker becomes available later in the job.
+- Docker daemon was unavailable at job start and remained unavailable through many retries over ~5 minutes
+  (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`), confirmed down for `docker_pull`,
+  `docker_exec`, and the host's own `docker`/`service docker start` (blocked by a permission-denied cgroup
+  mount, not something this job can fix). **Fallback used**: the host already has Java 21.0.12.1 and apt
+  access, so Gradle 8.11.1 was downloaded directly (services.gradle.org) and PostgreSQL 17 installed via
+  `apt-get` for all build/compile/boot-verification work. The deliverable Docker artifacts
+  (`Dockerfile`, `docker-compose.yml`, pinned to `postgres:17.2` exactly) are untouched by this workaround —
+  only this job's own verification mechanism used native tooling instead of containers.
+  **Must keep retrying `docker_pull` before the final Dockerfile build-and-run verification step** — if
+  Docker is still down then, that step must honestly report "Dockerfile verification skipped: docker
+  unavailable" per the reports-and-deploy contract, not be silently omitted.

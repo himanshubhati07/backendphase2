@@ -34,8 +34,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// Spring Boot 3.2.10 manages Flyway at 9.22.3, which still bundles PostgreSQL support
+	// directly inside flyway-core (the dedicated flyway-database-postgresql module is a
+	// Flyway-10+-only split, so it isn't used here).
 	implementation 'org.flywaydb:flyway-core'
-	implementation 'org.flywaydb:flyway-database-postgresql'
 	runtimeOnly 'org.postgresql:postgresql'
 
 	// JWT

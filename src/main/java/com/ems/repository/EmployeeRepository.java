@@ -20,12 +20,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 	 * Filters by name (matched against first OR last name), email, and department,
 	 * case-insensitively. Any parameter left {@code null} is not filtered on at all.
 	 */
+	// Parameters are explicitly cast to `string` because PostgreSQL's JDBC driver cannot
+	// infer a type for a bind parameter used only in a null-check ("? is null"), and
+	// without the cast it defaults to a binary type - producing
+	// "function lower(bytea) does not exist" the moment that same parameter also feeds
+	// into lower(...) below.
 	@Query("""
 			select e from Employee e where
-			(:name is null or lower(e.firstName) like lower(concat('%', :name, '%'))
-				or lower(e.lastName) like lower(concat('%', :name, '%')))
-			and (:email is null or lower(e.email) like lower(concat('%', :email, '%')))
-			and (:department is null or lower(e.department) like lower(concat('%', :department, '%')))
+			(cast(:name as string) is null or lower(e.firstName) like lower(concat('%', cast(:name as string), '%'))
+				or lower(e.lastName) like lower(concat('%', cast(:name as string), '%')))
+			and (cast(:email as string) is null or lower(e.email) like lower(concat('%', cast(:email as string), '%')))
+			and (cast(:department as string) is null
+				or lower(e.department) like lower(concat('%', cast(:department as string), '%')))
 			""")
 	Page<Employee> search(
 			@Param("name") String name,
