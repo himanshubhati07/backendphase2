@@ -221,6 +221,28 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 - No functional gaps found; project remains complete per the FINAL SUMMARY above. No code changes made in
   this resumed session.
 
+## SECOND RESUMED-JOB RE-VERIFICATION (verifier reported no specific gaps)
+
+- Re-confirmed Docker is still unavailable in this sandbox: `docker_pull`/`docker_exec` both fail with
+  `Cannot connect to the Docker daemon at unix:///var/run/docker.sock` — same environment limitation as
+  every prior session, not a regression, not fixable from within this job.
+- Re-ran the full native verification path again: native PostgreSQL 17 was already running
+  (db `ems` / role `ems` already existed from a prior session; reset the role's password to match
+  `.env.example`'s `change-me` since it couldn't be confirmed). `./gradlew --no-daemon compileJava` and
+  `./gradlew --no-daemon bootJar` both succeeded cleanly with no code changes needed. Booted the jar
+  directly with `java -jar`, confirmed `/health`→200, `/docs`→302, `/api-docs`→200, then ran
+  `tests/run_all.sh`: **19/19 PASS**. Identical results to both prior verification runs — no regressions,
+  no functional gaps.
+- Tooling quirk observed only in this resumed session (not a project bug): when the test jar is started in
+  the background (`&`) within the same `execute` call that later invokes `tests/run_all.sh` by a relative
+  path, the relative path intermittently isn't found (shell cwd context lost after backgrounding). Worked
+  around by referencing the project directory via an absolute-path variable for every command after the
+  background launch. Recorded via `record_fix` for future sessions; no project file changed.
+- Conclusion: project remains complete. No code changes made in this session. The only outstanding item is
+  the same pre-existing, environment-caused one: final Dockerfile build-and-run verification cannot be
+  performed because Docker is unavailable in this sandbox (documented above, unchanged since the original
+  run).
+
 ## Notes
 - Docker daemon was unavailable at job start and remained unavailable through many retries over ~5 minutes
   (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`), confirmed down for `docker_pull`,
