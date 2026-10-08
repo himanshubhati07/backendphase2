@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17.2
+        env:
+          POSTGRES_DB: ems
+          POSTGRES_USER: ems
+          POSTGRES_PASSWORD: ems_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ems -d ems"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/ems
+      DB_USERNAME: ems
+      DB_PASSWORD: ems_password
+      JWT_SECRET: ci-test-secret-used-only-in-github-actions-not-a-real-secret
+      SPRING_PROFILES_ACTIVE: default
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build -x test
+
+      - name: Verify Flyway migrations against PostgreSQL
+        run: |
+          ./gradlew bootRun &
+          APP_PID=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/health; then
+              echo "Application is up, migrations applied."
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:8080/health
+          kill $APP_PID

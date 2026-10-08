@@ -130,10 +130,10 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 
 ## Remaining shared-infra steps (after both groups land)
 
-- [ ] Dockerfile, docker-compose.yml, Makefile, .github/workflows/ci.yml
+- [x] Dockerfile, docker-compose.yml, Makefile, .github/workflows/ci.yml
 - [ ] Gradle wrapper (gradlew/gradlew.bat/gradle-wrapper.jar) — generate via dockerized gradle once daemon available
-- [ ] tests/ curl scripts
-- [ ] README.md
+- [x] tests/ curl scripts (common.sh, run_all.sh, 10 numbered example scripts)
+- [x] README.md
 - [ ] Build check / compile fix loop
 - [ ] Boot verification (docker_exec or docker compose) + curl-based endpoint report
 - [ ] xlsx test report + docx summary under tests-artifacts/
@@ -141,5 +141,8 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 - [ ] Final summary
 
 ## Notes
-- Docker daemon was unavailable at job start (`Cannot connect to the Docker daemon`) — retry before boot
-  verification; this blocks gradle-wrapper generation too until it's up.
+- Docker daemon was unavailable at job start and remained unavailable through several retries
+  (`Cannot connect to the Docker daemon at unix:///var/run/docream.sock`) — this blocks gradle-wrapper
+  generation, the whole build/compile/boot-verification pipeline, and the final Dockerfile
+  build-and-run verification. Keep retrying `docker_pull`/`docker_exec` before giving up on any of those
+  steps; do not silently skip them if docker becomes available later in the job.
