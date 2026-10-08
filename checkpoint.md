@@ -202,6 +202,25 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
 3. Added `EmsUserDetailsService` (backed by `UserRepository`) so Spring Boot stops auto-generating and
    logging a throwaway default-user password at every startup (cosmetic/log-hygiene fix, not a functional bug).
 
+## RESUMED-JOB RE-VERIFICATION (post-handoff, no specific verifier gaps recorded)
+
+- Re-checked Docker availability at the start of this resumed session: still unavailable
+  (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`), `service docker start` still fails
+  with the same cgroup-mount permission-denied error as the original run. Confirmed this is the same
+  environment limitation already documented above, not a new regression.
+- Re-ran the full native verification path end-to-end to confirm nothing had bit-rotted since the original
+  run: started native PostgreSQL 17, `./gradlew compileJava` clean, `./gradlew bootJar` clean, booted the jar
+  directly (`java -jar build/libs/employee-management-system-0.0.1-SNAPSHOT.jar`) against it, then
+  `tests/run_all.sh`: **19/19 PASS** (identical results to the original run). `/docs` → 302, `/api-docs` → 200.
+  Tore down the app process afterward.
+  - Note: `./gradlew bootRun` initially failed with a stale-password error after the native Postgres
+    password was reset, because the long-lived Gradle daemon had cached env vars from its first start and
+    never picked up the new `DB_PASSWORD` export. Worked around by building the jar once and launching it
+    directly with `java -jar` (recorded via `record_fix`) — no project code change needed, this was purely a
+    verification-tooling quirk in this sandbox.
+- No functional gaps found; project remains complete per the FINAL SUMMARY above. No code changes made in
+  this resumed session.
+
 ## Notes
 - Docker daemon was unavailable at job start and remained unavailable through many retries over ~5 minutes
   (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`), confirmed down for `docker_pull`,
