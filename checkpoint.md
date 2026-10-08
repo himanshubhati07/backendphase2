@@ -146,8 +146,13 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
       CRUD, duplicate-employee 409, validation 400, 404s, pagination, search-by-department, search-by-name,
       delete 204, deleted-get 404, delete-nonexistent 404). `/health`->200, `/docs`->302 (redirects to
       swagger-ui/index.html, normal), `/api-docs`->200.
-- [ ] xlsx test report + docx summary under tests-artifacts/
-- [ ] Final Dockerfile build-and-run verification
+- [x] xlsx test report + docx summary under tests-artifacts/ — `tests-artifacts/api_test_report.xlsx`
+      (23/23 PASS, every row a real HTTP request made by a throwaway `generate_report.py` against a freshly
+      booted instance) + `tests-artifacts/project_report.docx` (architecture + full results table). Both
+      one-off helper scripts deleted after running, per the reports-and-deploy contract; `test_results.json`
+      kept alongside the xlsx as the platform's report-repair backing file. `.gitignore` added (excludes
+      build/.gradle output, .env, and the (already-deleted) helper scripts as a backstop).
+- [ ] Final Dockerfile build-and-run verification — blocked on Docker daemon; retry before final summary.
 - [ ] Final summary
 
 ## Bugs found & fixed during build/boot verification
