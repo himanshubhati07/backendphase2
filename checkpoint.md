@@ -387,3 +387,27 @@ above, in `ai_changes.md`, and in `tests-artifacts/changes_report.docx`.
 - No code changes made in this session; no functional gaps found. Project remains complete, with the same
   pre-existing, environment-caused exception: final Dockerfile build-and-run verification cannot be
   performed because Docker is unavailable in this sandbox.
+
+## RESUMED-JOB RE-VERIFICATION #3 (verifier reported no specific gaps)
+
+- Re-confirmed Docker is still unavailable in this sandbox (`docker_pull` fails with
+  `Cannot connect to the Docker daemon at unix:///var/run/docker.sock`) — same environment limitation
+  documented throughout this job's history, not fixable from within this job.
+- Native PostgreSQL 17 (role `ems`, db `ems`) was already running from a prior session; reset the role's
+  password to match `.env.example`'s `change-me`. `./gradlew --no-daemon compileJava bootJar` reported
+  `UP-TO-DATE`/`BUILD SUCCESSFUL` with zero code changes needed.
+- Booted `build/libs/employee-management-system-0.0.1-SNAPSHOT.jar` (the executable Boot jar — note
+  `build/libs/` also contains a `-plain.jar` with no main manifest, which a naive `*.jar` glob can pick up
+  first and fail to launch; this is a verification-tooling pitfall, not a project bug, and no project file
+  was changed because of it): `/health`→200, `/docs`→302, `/api-docs`→200.
+- `tests/run_all.sh`: **16/16 PASS**, identical to the prior session (no delete-related assertions remain).
+- Explicitly re-confirmed `DELETE /api/v1/employees/{id}` is still gone via a live register→create→delete→get
+  flow: DELETE returns 500 (unmapped-verb fallback through the pre-existing `GlobalExceptionHandler`), and
+  the follow-up GET on the same id still returns 200 (record not deleted) — matches documented post-removal
+  behavior exactly, confirming data integrity.
+- Verified the existing `tests-artifacts/api_test_report.xlsx` and `tests-artifacts/changes_report.docx` are
+  still present and structurally valid (opened as zip archives successfully); no regeneration needed since
+  no code changed.
+- No code changes made in this session; no functional gaps found. Project remains complete, with the same
+  pre-existing, environment-caused exception: final Dockerfile build-and-run verification cannot be
+  performed because Docker is unavailable in this sandbox.
