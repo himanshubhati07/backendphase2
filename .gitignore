@@ -51,3 +51,12 @@ server.log
 start.log
 test_results.md
 verifier-report.json
+/_[!_]*.py
+/.[!.]*.py
+/generate*report*.py
+/gen_report*.py
+/gen_docx*.py
+/live_verify*.py
+/scripts/generate*report*.py
+/scripts/gen_report*.py
+/scripts/gen_docx*.py
