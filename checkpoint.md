@@ -368,3 +368,22 @@ only. No new entities/endpoints/tests; no DB/migration changes; no auth changes.
 ### Status: COMPLETE
 All completion criteria met except the environment-blocked Docker build-and-run step, honestly reported
 above, in `ai_changes.md`, and in `tests-artifacts/changes_report.docx`.
+
+## RESUMED-JOB RE-VERIFICATION #2 (verifier reported no specific gaps)
+
+- Re-confirmed Docker is still unavailable in this sandbox: `docker_pull` and `service docker start` both
+  fail with the same cgroup-mount permission-denied error documented throughout this job's history — not a
+  regression, not fixable from within this job.
+- Re-ran the native verification path: native PostgreSQL 17 (role `ems`, db `ems`) was already running from
+  a prior session; reset the role's password to match `.env.example`'s `change-me`. `./gradlew --no-daemon
+  compileJava` and `bootJar` both reported `UP-TO-DATE`/`BUILD SUCCESSFUL` with zero code changes needed.
+- Booted the jar natively (`java -jar build/libs/employee-management-system-0.0.1-SNAPSHOT.jar`):
+  `/health`→200, `/docs`→302, `/api-docs`→200.
+- `tests/run_all.sh`: **16/16 PASS**, identical to the prior session (no delete-related assertions remain,
+  matching the "Remove DELETE" task scope).
+- Explicitly re-confirmed `DELETE /api/v1/employees/{id}` is gone: request returns HTTP 500 (unmapped-verb
+  fallback in the pre-existing, untouched `GlobalExceptionHandler`), not 204 — matches the documented
+  post-removal behavior exactly.
+- No code changes made in this session; no functional gaps found. Project remains complete, with the same
+  pre-existing, environment-caused exception: final Dockerfile build-and-run verification cannot be
+  performed because Docker is unavailable in this sandbox.
