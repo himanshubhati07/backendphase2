@@ -117,21 +117,6 @@ SEARCH_NAME_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -G "$BASE_URL/api/v1
 	-H "$AUTH_HEADER")
 assert_status "search employees by name" 200 "$SEARCH_NAME_STATUS"
 
-echo "== Employees: delete =="
-DELETE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE_URL/api/v1/employees/$EMP_ID" \
-	-H "$AUTH_HEADER")
-assert_status "delete employee" 204 "$DELETE_STATUS"
-
-echo "== Employees: get deleted employee -> 404 =="
-GET_DELETED_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/api/v1/employees/$EMP_ID" \
-	-H "$AUTH_HEADER")
-assert_status "get deleted employee returns 404" 404 "$GET_DELETED_STATUS"
-
-echo "== Employees: delete nonexistent -> 404 =="
-DELETE_404_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE_URL/api/v1/employees/999999999" \
-	-H "$AUTH_HEADER")
-assert_status "delete nonexistent employee returns 404" 404 "$DELETE_404_STATUS"
-
 rm -f "$REGISTER_BODY" "$LOGIN_BODY" "$CREATE_BODY"
 
 print_summary

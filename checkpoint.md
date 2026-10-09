@@ -308,3 +308,63 @@ Shared infra already written: `settings.gradle`, `build.gradle`, `EmsApplication
   **Must keep retrying `docker_pull` before the final Dockerfile build-and-run verification step** — if
   Docker is still down then, that step must honestly report "Dockerfile verification skipped: docker
   unavailable" per the reports-and-deploy contract, not be silently omitted.
+
+## TASK: Remove DELETE /api/v1/employees/{id} (job-80786205-7ef8-4abf-af61-bf5efec4aa4f)
+
+**Note on project path**: this checkpoint file's "Project root" line at the very top (and all content
+above this section) describes the ORIGINAL greenfield build of this EMS codebase, done under a different
+job id/output directory (`job-55dca92d-...`) and committed into the `backendphase2` GitHub repo this
+brownfield job cloned (branch `modify`). That history is kept verbatim above for architectural context —
+do not confuse it with this job's own project path, which is
+`/outputs/job-80786205-7ef8-4abf-af61-bf5efec4aa4f/` (this exact directory).
+
+**Scope**: surgical removal of the `DELETE /api/v1/employees/{id}` endpoint and its backing service method
+only. No new entities/endpoints/tests; no DB/migration changes; no auth changes.
+
+### Changes made
+- `src/main/java/com/ems/controller/EmployeeController.java` — removed the `@DeleteMapping("/{id}")`
+  handler, its `api-key` query-param handling, its `@Operation` Swagger annotation, the now-unused
+  `ApiKeyService` field/constructor param, and the `DeleteMapping` import. POST/GET-by-id/GET-list/
+  GET-search/PUT all unchanged.
+- `src/main/java/com/ems/service/EmployeeService.java` — removed the `delete(Long id)` method in full (no
+  private helpers existed solely for it — `findEmployeeOrThrow`/`applyRequest` are still used by
+  `getById`/`update`, left untouched). Updated class Javadoc to drop "deletion" from the summary.
+- Left untouched, as required: `ApiKeyService`, `ApiKeyException`, `app.api-key.keys`/`API_KEYS` config
+  everywhere (now an accepted dead/unused dependency chain since its only caller is gone).
+- Test/doc cleanup tied directly to the removed endpoint: deleted `tests/07_delete_employee.sh` and
+  `tests/11_delete_employee_with_api_key.sh`; removed the 3 delete-specific assertions from
+  `tests/run_all.sh` (16 assertions remain); removed the Delete curl example + stale script refs from
+  `README.md`, reworded the `API_KEYS` env var row.
+- `ai_changes.md` (new, project root) — full change summary for this task.
+
+### Verification performed
+- `./gradlew --no-daemon build -x test` → **BUILD SUCCESSFUL**, zero compile errors.
+- Docker daemon unreachable in this sandbox (same `cgroup permission denied` limitation documented in the
+  "Notes" section above — confirmed again via `docker_pull`, `docker_compose up -d db`, `docker_exec` with a
+  `docker:24-cli` image, and `service docker start`, 3+ attempts, all failed identically). **Fallback**:
+  installed PostgreSQL 17 natively via `apt-get` (host already had Java 21 + the project's own Gradle
+  wrapper), booted the built jar natively (`java -jar build/libs/employee-management-system-...jar`).
+- `tests/run_all.sh`: **16/16 PASS** (full remaining auth + employee CRUD/search flow, no regressions).
+- Explicitly confirmed DELETE is gone: calling `DELETE /api/v1/employees/{id}` no longer returns 204; it now
+  surfaces as a 500 via the app's pre-existing (untouched) `GlobalExceptionHandler` catch-all for
+  `HttpRequestMethodNotSupportedException` — no stack trace/internal detail leaked to the client. Confirmed
+  via follow-up GET that the employee record was NOT deleted (data integrity intact). This 500-vs-405 choice
+  is pre-existing behavior for any unmapped verb on any path, unrelated to this change, and
+  `GlobalExceptionHandler` was correctly left untouched (out of this task's two-file scope).
+- Live HTTP report generation (throwaway `generate_api_report.py`/`generate_changes_report.py` at project
+  root, both deleted after running, per the reports-and-deploy contract): **19/19 PASS** —
+  `tests-artifacts/api_test_report.xlsx` + `tests-artifacts/test_results.json` (backing JSON) +
+  `tests-artifacts/changes_report.docx` (architecture-aware change summary, full results, honest Docker-gap
+  note). `tests-artifacts/` is gitignored by design (generation-time-only, not shipped in the repo).
+- **Final Dockerfile build-and-run verification: FAILED after 3/3 attempts** — Docker daemon never reachable
+  in this sandbox. `Dockerfile`/`docker-compose.yml` both already existed and needed no changes (no new
+  deps/ports/services introduced by this task); their content was not modified. This is the same
+  environment limitation documented throughout this project's history, not a defect in the generated
+  Docker artifacts — the native build+boot path above independently confirms the application code itself
+  works correctly.
+- Committed locally to the `modify` branch via `git_commit` (no push — that remains a separate,
+  human-approved step).
+
+### Status: COMPLETE
+All completion criteria met except the environment-blocked Docker build-and-run step, honestly reported
+above, in `ai_changes.md`, and in `tests-artifacts/changes_report.docx`.

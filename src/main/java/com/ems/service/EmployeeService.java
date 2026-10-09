@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Business logic for managing employees: creation, lookup, paginated listing,
- * updates, deletion, and multi-field search.
+ * updates, and multi-field search.
  */
 @Service
 @Transactional
@@ -71,14 +71,6 @@ public class EmployeeService {
 		Employee saved = employeeRepository.save(employee);
 		log.info("Updated employee id={}", saved.getId());
 		return EmployeeResponse.fromEntity(saved);
-	}
-
-	public void delete(Long id) {
-		if (!employeeRepository.existsById(id)) {
-			throw new ResourceNotFoundException("Employee not found: id=" + id);
-		}
-		employeeRepository.deleteById(id);
-		log.info("Deleted employee id={}", id);
 	}
 
 	@Transactional(readOnly = true)
