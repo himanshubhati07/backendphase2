@@ -58,6 +58,13 @@ public class GlobalExceptionHandler {
 		return respond(HttpStatus.CONFLICT, ex.getMessage(), correlationId);
 	}
 
+	@ExceptionHandler(ApiKeyException.class)
+	public ResponseEntity<ApiResponse<Void>> handleApiKey(ApiKeyException ex, HttpServletRequest request) {
+		String correlationId = correlationId(request);
+		log.warn("[{}] API key validation failed on {}: {}", correlationId, request.getRequestURI(), ex.getMessage());
+		return respond(HttpStatus.UNAUTHORIZED, "Invalid or missing API key", correlationId);
+	}
+
 	@ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
 	public ResponseEntity<ApiResponse<Void>> handleAuthentication(
 			Exception ex, HttpServletRequest request) {

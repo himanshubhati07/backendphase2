@@ -50,6 +50,7 @@ isn't purely local development:
 | `POSTGRES_DB` | DB name created by the `db` compose service | `ems` |
 | `JWT_SECRET` | HMAC signing secret for JWTs (any length - it's stretched to 256 bits internally) | *(secret)* |
 | `SPRING_PROFILES_ACTIVE` | Active Spring profile (`dev` locally, unset/`default` otherwise) | `dev` |
+| `API_KEYS` | Comma-separated valid API keys for the optional `DELETE /api/v1/employees/{id}?api-key=...` layer; empty/unset disables it | `test-key-1,test-key-2` |
 
 No secret ever has a real value committed to source control; `application.yml` only
 contains safe local-dev fallbacks.
@@ -156,6 +157,16 @@ curl -i -X DELETE http://localhost:8080/api/v1/employees/1 -H "Authorization: Be
 ```
 `204 No Content` on success, `404` if not found.
 
+Optionally, an extra `api-key` query parameter can be supplied for a second validation
+layer on top of JWT, checked against the comma-separated `app.api-key.keys`
+configuration property (`API_KEYS` env var; empty/unset disables this layer entirely):
+```bash
+curl -i -X DELETE "http://localhost:8080/api/v1/employees/1?api-key=test-key-1" \
+  -H "Authorization: Bearer $TOKEN"
+```
+`204 No Content` if the key is valid (or if no keys are configured), `401` if an
+`api-key` is supplied but doesn't match any configured key.
+
 **Search**
 ```bash
 curl -i -G "http://localhost:8080/api/v1/employees/search" \
@@ -185,7 +196,9 @@ BASE_URL=http://localhost:8080 bash tests/run_all.sh
 CRUD -> search -> pagination -> invalid token -> missing resource) with pass/fail
 assertions on HTTP status codes. The numbered scripts (`01_register.sh` ...
 `10_missing_resource.sh`) are standalone, documented examples of each endpoint for
-manual use.
+manual use. `11_delete_employee_with_api_key.sh` additionally exercises the optional
+`api-key` query parameter on the delete endpoint (valid key -> 204, invalid key -> 401
+or 204 if validation is disabled).
 
 ## WebSocket scaffold
 

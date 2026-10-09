@@ -29,6 +29,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-ems_password}
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-long-random-secret-value}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      API_KEYS: ${API_KEYS:-test-key-1,test-key-2}
     depends_on:
       db:
         condition: service_healthy

@@ -4,6 +4,7 @@ import com.ems.dto.ApiResponse;
 import com.ems.dto.EmployeeRequest;
 import com.ems.dto.EmployeeResponse;
 import com.ems.dto.PageResponse;
+import com.ems.service.ApiKeyService;
 import com.ems.service.EmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,7 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST endpoints for managing employees. Every endpoint here requires a valid JWT,
  * enforced globally by {@code SecurityConfig}'s {@code anyRequest().authenticated()}
- * rule - no auth-aware code belongs in this controller.
+ * rule. {@code DELETE /{id}} additionally supports an optional {@code api-key} query
+ * parameter, validated by {@link ApiKeyService} as a second, independent layer on top
+ * of JWT - all validation logic itself stays in the service, not here.
  */
 @RestController
 @RequestMapping("/api/v1/employees")
@@ -31,9 +34,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmployeeController {
 
 	private final EmployeeService employeeService;
+	private final ApiKeyService apiKeyService;
 
-	public EmployeeController(EmployeeService employeeService) {
+	public EmployeeController(EmployeeService employeeService, ApiKeyService apiKeyService) {
 		this.employeeService = employeeService;
+		this.apiKeyService = apiKeyService;
 	}
 
 	@PostMapping
@@ -75,8 +80,15 @@ public class EmployeeController {
 	}
 
 	@DeleteMapping("/{id}")
-	@Operation(summary = "Delete an employee")
-	public ResponseEntity<Void> delete(@PathVariable Long id) {
+	@Operation(summary = "Delete an employee",
+			description = "Optionally accepts an 'api-key' query parameter for an extra validation layer "
+					+ "on top of the standard JWT authentication; validation is skipped when the parameter "
+					+ "is omitted or when no API keys are configured.")
+	public ResponseEntity<Void> delete(
+			@PathVariable Long id, @RequestParam(name = "api-key", required = false) String apiKey) {
+		if (apiKey != null) {
+			apiKeyService.validateApiKey(apiKey, id);
+		}
 		employeeService.delete(id);
 		return ResponseEntity.noContent().build();
 	}

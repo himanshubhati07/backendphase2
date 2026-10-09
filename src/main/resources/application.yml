@@ -34,6 +34,10 @@ app:
   jwt:
     secret: ${JWT_SECRET:this-is-a-development-only-placeholder-secret-change-me-in-prod}
     expiry-minutes: 30
+  api-key:
+    # Comma-separated list of valid API keys for the optional DELETE-employee API key
+    # layer. Empty/unset disables validation entirely (every request is accepted).
+    keys: ${API_KEYS:test-key-1,test-key-2}
 
 springdoc:
   swagger-ui:
